@@ -1,0 +1,834 @@
+import { storage } from './storage.js';
+import { ui } from './ui.js';
+
+class CreditorsManager {
+    constructor() {
+        this.creditorsList = null;
+        this.searchInput = null;
+        this.filterSelect = null;
+        this.isLoaded = false;
+        this.currentCustomer = null;
+        this.currentOutstanding = 0;
+        this.selectedMonth = null;
+        this.selectedYear = null;
+        this.useBusinessCycle = false;
+    }
+
+    // In-app notification system
+    showNotification(message, type = 'info') {
+        // Remove existing notifications
+        const existing = document.querySelectorAll('.app-notification');
+        existing.forEach(n => n.remove());
+
+        const colors = {
+            success: { bg: '#d1fae5', border: '#10b981', text: '#065f46', icon: '✅' },
+            error: { bg: '#fee2e2', border: '#ef4444', text: '#991b1b', icon: '❌' },
+            warning: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e', icon: '⚠️' },
+            info: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af', icon: 'ℹ️' }
+        };
+
+        const color = colors[type] || colors.info;
+
+        const notification = document.createElement('div');
+        notification.className = 'app-notification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${color.bg};
+            color: ${color.text};
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid ${color.border};
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            z-index: 10000;
+            max-width: 400px;
+            animation: slideIn 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 500;
+        `;
+
+        notification.innerHTML = `
+            <span style="font-size: 1.5rem;">${color.icon}</span>
+            <span style="flex: 1;">${message}</span>
+            <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: ${color.text}; opacity: 0.7; padding: 0; margin: 0; line-height: 1;">&times;</button>
+        `;
+
+        // Add animation styles if not already present
+        if (!document.getElementById('notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = `
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(400px);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+                @keyframes slideOut {
+                    from {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                    to {
+                        transform: translateX(400px);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(notification);
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
+    }
+
+    initialize() {
+        this.creditorsList = document.getElementById('creditors-list');
+        this.searchInput = document.getElementById('creditor-search');
+        this.filterSelect = document.getElementById('creditor-filter');
+        
+        const refreshBtn = document.getElementById('refresh-creditors-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.loadCreditorsData());
+        }
+        
+        if (this.searchInput) {
+            // Remove any existing listeners
+            this.searchInput.removeEventListener('keyup', this.handleSearch);
+            this.searchInput.removeEventListener('input', this.handleSearch);
+            
+            // Add new listeners
+            this.handleSearch = () => this.filterCreditors();
+            this.searchInput.addEventListener('keyup', this.handleSearch);
+            this.searchInput.addEventListener('input', this.handleSearch);
+            
+            console.log('✅ Search input initialized');
+        } else {
+            console.warn('⚠️ Search input not found');
+        }
+        
+        if (this.filterSelect) {
+            this.filterSelect.addEventListener('change', () => this.filterCreditors());
+        }
+        
+        this.getCurrentPeriod();
+        
+        if (!this.isLoaded) this.loadCreditorsData();
+    }
+
+    getCurrentPeriod() {
+        const now = new Date();
+        const currentDay = now.getDate();
+        let currentMonth = now.getMonth() + 1;
+        let currentYear = now.getFullYear();
+        
+        if (currentDay < 5) {
+            this.useBusinessCycle = true;
+            currentMonth = currentMonth - 1;
+            if (currentMonth === 0) {
+                currentMonth = 12;
+                currentYear = currentYear - 1;
+            }
+        } else {
+            this.useBusinessCycle = false;
+        }
+        
+        this.selectedMonth = currentMonth;
+        this.selectedYear = currentYear;
+    }
+
+    getBusinessMonth(date) {
+        if (!date) return { month: new Date().getMonth() + 1, year: new Date().getFullYear() };
+        
+        const d = new Date(date);
+        const day = d.getDate();
+        let month = d.getMonth() + 1;
+        let year = d.getFullYear();
+        
+        if (day < 5) {
+            month = month - 1;
+            if (month === 0) {
+                month = 12;
+                year = year - 1;
+            }
+        }
+        
+        return { month, year };
+    }
+
+    getPaymentPeriod(payment) {
+        if (payment.applies_to_period && payment.applies_to_period.month && payment.applies_to_period.year) {
+            return payment.applies_to_period;
+        }
+        return this.getBusinessMonth(payment.date);
+    }
+
+    filterByPeriod(items, type = 'sale') {
+        if (!this.selectedMonth || !this.selectedYear || !items) return items || [];
+
+        return items.filter(item => {
+            if (!item || !item.date) return false;
+            
+            let itemMonth, itemYear;
+            
+            try {
+                if (type === 'payment') {
+                    const period = this.getPaymentPeriod(item);
+                    itemMonth = period.month;
+                    itemYear = period.year;
+                } else if (this.useBusinessCycle) {
+                    const businessMonth = this.getBusinessMonth(item.date);
+                    itemMonth = businessMonth.month;
+                    itemYear = businessMonth.year;
+                } else {
+                    const itemDate = new Date(item.date);
+                    itemMonth = itemDate.getMonth() + 1;
+                    itemYear = itemDate.getFullYear();
+                }
+                
+                return itemMonth === this.selectedMonth && itemYear === this.selectedYear;
+            } catch (error) {
+                console.error('Error filtering item:', error, item);
+                return false;
+            }
+        });
+    }
+
+    getNormalizedCustomerKey(data) {
+        // Explanation: Normalizes customer name for matching (trim, lowercase) to handle case inconsistencies like "Sbu" vs "sbu".
+        return (data.customer_name || data.customer_id || data.to_customer || data.from_collector || 'unknown customer').trim().toLowerCase();
+    }
+
+    async loadCreditorsData() {
+        // Explanation for dummies: Loads ALL historical credit to calculate true lifetime outstanding (every unpaid penny).
+        // Separates: Total Clients = all unique ever; Debt Clients = those still owing; Outstanding = sum of unpaid ever.
+        // Monthly Paid = collections this period (for evaluation). List shows only current debtors.
+        // Fixes sum issues by normalizing customer keys for accurate matching/subtraction.
+        // NO AUTOMATIC NOTIFICATIONS - only console logs
+        if (this.creditorsList) {
+            const periodName = this.selectedMonth ? new Date(this.selectedYear, this.selectedMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'current period';
+            this.creditorsList.innerHTML = `<div style="text-align: center; padding: 3rem; color: #6b7280;">Loading lifetime credit data with ${periodName} activity...</div>`;
+        }
+
+        try {
+            await storage.loadAllData();
+            let allPayments = storage.getPayments() || [];
+            let allSales = storage.getSales() || [];
+
+            // Get ALL credit sales (lifetime)
+            const allCreditSales = allSales.filter(sale => sale.payment_type === 'credit' || sale.payment === 'credit');
+            
+            // Filter for monthly
+            const monthlyCreditSales = this.filterByPeriod(allCreditSales, 'sale');
+            const monthlyPayments = this.filterByPeriod(allPayments, 'payment');
+
+            // Build summary with normalized keys
+            const creditSummary = {};
+            const originalNames = {}; // Store original casing for display
+
+            // Process ALL sales
+            allCreditSales.forEach(sale => {
+                const normKey = this.getNormalizedCustomerKey(sale);
+                const origName = sale.customer_name || sale.customer_id || 'Unknown Customer';
+                originalNames[normKey] = origName;
+
+                if (!creditSummary[normKey]) {
+                    creditSummary[normKey] = {
+                        name: origName,
+                        totalCredit: 0,
+                        totalPaid: 0,
+                        outstandingAmount: 0,
+                        monthlySales: 0,
+                        monthlyPaid: 0,
+                        transactions: [],
+                        payments: [],
+                        monthlyTransactions: [],
+                        monthlyPayments: [],
+                        lastPurchase: null,
+                        items: [],
+                        createdBy: sale.created_by || 'system'
+                    };
+                }
+                creditSummary[normKey].totalCredit += parseFloat(sale.total) || 0;
+                creditSummary[normKey].transactions.push(sale);
+                
+                const productInfo = `${sale.product || 'Unknown'} (${sale.quantity || 0}x R${sale.price || 0})`;
+                creditSummary[normKey].items.push(productInfo);
+                
+                if (!creditSummary[normKey].lastPurchase || new Date(sale.date) > new Date(creditSummary[normKey].lastPurchase)) {
+                    creditSummary[normKey].lastPurchase = sale.date;
+                }
+            });
+
+            // Process ALL payments
+            allPayments.forEach(payment => {
+                const normKey = this.getNormalizedCustomerKey(payment);
+                const origName = payment.customer_name || payment.to_customer || payment.from_collector || 'Unknown Customer';
+                if (!originalNames[normKey]) originalNames[normKey] = origName;
+
+                if (!creditSummary[normKey]) {
+                    creditSummary[normKey] = {
+                        name: origName,
+                        totalCredit: 0,
+                        totalPaid: 0,
+                        outstandingAmount: 0,
+                        monthlySales: 0,
+                        monthlyPaid: 0,
+                        transactions: [],
+                        payments: [],
+                        monthlyTransactions: [],
+                        monthlyPayments: [],
+                        lastPurchase: null,
+                        items: [],
+                        createdBy: 'system'
+                    };
+                }
+                
+                creditSummary[normKey].totalPaid += parseFloat(payment.amount) || 0;
+                creditSummary[normKey].payments.push(payment);
+                if (!creditSummary[normKey].lastPurchase || new Date(payment.date) > new Date(creditSummary[normKey].lastPurchase)) {
+                    creditSummary[normKey].lastPurchase = payment.date;
+                }
+            });
+
+            // Add monthly sales
+            monthlyCreditSales.forEach(sale => {
+                const normKey = this.getNormalizedCustomerKey(sale);
+                if (creditSummary[normKey]) {
+                    creditSummary[normKey].monthlySales += parseFloat(sale.total) || 0;
+                    creditSummary[normKey].monthlyTransactions.push(sale);
+                }
+            });
+
+            // Add monthly payments
+            monthlyPayments.forEach(payment => {
+                const normKey = this.getNormalizedCustomerKey(payment);
+                if (creditSummary[normKey]) {
+                    creditSummary[normKey].monthlyPaid += parseFloat(payment.amount) || 0;
+                    creditSummary[normKey].monthlyPayments.push(payment);
+                }
+            });
+
+            // Calculate lifetime outstanding
+            Object.keys(creditSummary).forEach(normKey => {
+                const totalCredit = parseFloat(creditSummary[normKey].totalCredit) || 0;
+                const totalPaid = parseFloat(creditSummary[normKey].totalPaid) || 0;
+                creditSummary[normKey].outstandingAmount = Math.max(0, totalCredit - totalPaid);
+            });
+
+            // Filter debtors
+            const customersWithDebt = {};
+            Object.entries(creditSummary).forEach(([normKey, data]) => {
+                if (data.outstandingAmount > 0.01) {
+                    customersWithDebt[normKey] = data;
+                }
+            });
+
+            // Calculate stats - ENSURE PROPER NUMBER TYPES
+            const totalClients = Object.keys(creditSummary).length;
+            const totalPaidThisMonth = Object.values(creditSummary).reduce((sum, cust) => {
+                return sum + (parseFloat(cust.monthlyPaid) || 0);
+            }, 0);
+            const totalOutstanding = Object.values(customersWithDebt).reduce((sum, cust) => {
+                return sum + (parseFloat(cust.outstandingAmount) || 0);
+            }, 0);
+            const clientsWithDebtCount = Object.keys(customersWithDebt).length;
+
+            // Debug log
+            console.log('📊 Debug - Total Clients (ever):', totalClients);
+            console.log('📊 Lifetime Outstanding Sum:', totalOutstanding);
+            console.log('📊 This Month Paid:', totalPaidThisMonth);
+            console.log('📊 Debtors Count:', clientsWithDebtCount);
+            console.table(Object.entries(customersWithDebt).map(([k, v]) => ({ 
+                Customer: v.name, 
+                Outstanding: v.outstandingAmount, 
+                TotalCredit: v.totalCredit, 
+                TotalPaid: v.totalPaid 
+            })));
+
+            this.updateStats(totalClients, totalOutstanding, totalPaidThisMonth, clientsWithDebtCount);
+            
+            if (Object.keys(customersWithDebt).length === 0) {
+                this.renderNoActivity(totalClients, totalPaidThisMonth);
+                return;
+            }
+
+            this.renderCreditorsList(customersWithDebt);
+            this.isLoaded = true;
+            
+            console.log('✅ Creditors loaded: R' + totalOutstanding.toFixed(2) + ' outstanding from ' + clientsWithDebtCount + ' debtors (of ' + totalClients + ' total clients)');
+            
+            // Re-attach listeners
+            setTimeout(() => {
+                this.searchInput = document.getElementById('creditor-search');
+                this.filterSelect = document.getElementById('creditor-filter');
+                
+                if (this.searchInput) {
+                    this.searchInput.removeEventListener('keyup', this.handleSearch);
+                    this.searchInput.removeEventListener('input', this.handleSearch);
+                    this.handleSearch = () => this.filterCreditors();
+                    this.searchInput.addEventListener('keyup', this.handleSearch);
+                    this.searchInput.addEventListener('input', this.handleSearch);
+                    console.log('✅ Search re-attached');
+                }
+                
+                if (this.filterSelect) {
+                    this.filterSelect.addEventListener('change', () => this.filterCreditors());
+                }
+                
+                this.filterCreditors();
+            }, 100);
+        } catch (error) {
+            console.error('Error loading creditors data:', error);
+            this.showNotification('Error loading credit data: ' + error.message, 'error');
+            if (this.creditorsList) {
+                this.creditorsList.innerHTML = '<div style="text-align: center; padding: 3rem; color: #ef4444;">Error loading data. Please refresh and check console for details.</div>';
+            }
+        }
+    }
+
+    updateStats(totalClients, totalOutstanding, totalPaidThisMonth, clientsWithDebtCount) {
+        // Force numeric values and validate
+        const safeOutstanding = parseFloat(totalOutstanding) || 0;
+        const safePaid = parseFloat(totalPaidThisMonth) || 0;
+        const safeClients = parseInt(totalClients) || 0;
+        const safeDebtCount = parseInt(clientsWithDebtCount) || 0;
+
+        console.log('🔧 Updating stats with:', { 
+            safeOutstanding, 
+            safePaid, 
+            safeClients, 
+            safeDebtCount 
+        });
+
+        // Helper function to find element by multiple strategies
+        const findStatElement = (primaryId, ...fallbackSelectors) => {
+            let el = document.getElementById(primaryId);
+            if (el) return el;
+            
+            for (const selector of fallbackSelectors) {
+                el = document.querySelector(selector);
+                if (el) return el;
+            }
+            
+            return null;
+        };
+
+        // Find elements with extensive fallback strategies
+        const clientsEl = findStatElement(
+            'total-credit-clients',
+            '[data-stat="total-clients"]',
+            '[data-stat="clients"]',
+            '.credit-stat:has-text("Total Credit Clients") .stat-value',
+            '#creditors-stats .stat-card:nth-child(1) .stat-value'
+        );
+
+        const outstandingEl = findStatElement(
+            'total-amount-owed',              // 🔥 CORRECT ID
+            'current-outstanding',             // Fallback to old ID
+            '[data-stat="outstanding"]',
+            '[data-stat="current-outstanding"]',
+            '.credit-stat:has-text("Current Outstanding") .stat-value',
+            '#creditors-stats .stat-card:nth-child(2) .stat-value'
+        );
+
+        const paidEl = findStatElement(
+            'total-amount-paid',
+            '[data-stat="paid"]',
+            '[data-stat="total-paid"]',
+            '.credit-stat:has-text("Total Amount Paid") .stat-value',
+            '#creditors-stats .stat-card:nth-child(3) .stat-value'
+        );
+
+        const debtClientsEl = findStatElement(
+            'outstanding-debts',               // 🔥 CORRECT ID
+            'clients-with-debt',               // Fallback to old ID
+            '[data-stat="debt-clients"]',
+            '[data-stat="debtors"]',
+            '.credit-stat:has-text("Clients With Debt") .stat-value',
+            '#creditors-stats .stat-card:nth-child(4) .stat-value'
+        );
+
+        console.log('🔍 Elements found:', { 
+            clientsEl: !!clientsEl, 
+            outstandingEl: !!outstandingEl, 
+            paidEl: !!paidEl, 
+            debtClientsEl: !!debtClientsEl 
+        });
+
+        // If primary elements not found, try to find them by nearby text
+        if (!outstandingEl || !debtClientsEl) {
+            console.warn('⚠️ Using text-based element search...');
+            
+            const allElements = document.querySelectorAll('div, span, p');
+            allElements.forEach(el => {
+                const text = el.textContent?.trim();
+                
+                if (!outstandingEl && (text === 'R0.00' || text === '0.00') && 
+                    el.parentElement?.textContent?.includes('Outstanding')) {
+                    console.log('🔍 Found outstanding element by text search');
+                    el.textContent = ui.formatCurrency(safeOutstanding);
+                }
+                
+                if (!debtClientsEl && text === '0' && 
+                    el.parentElement?.textContent?.includes('Debt')) {
+                    console.log('🔍 Found debt clients element by text search');
+                    el.textContent = safeDebtCount;
+                }
+            });
+        }
+
+        if (clientsEl) {
+            clientsEl.textContent = safeClients;
+            console.log('✅ Set clients to:', clientsEl.textContent);
+        } else {
+            console.error('❌ Clients element not found!');
+        }
+
+        if (outstandingEl) {
+            const formatted = ui.formatCurrency(safeOutstanding);
+            outstandingEl.textContent = formatted;
+            console.log('✅ Set outstanding to:', formatted, 'from raw value:', safeOutstanding);
+        } else {
+            console.error('❌ Outstanding element not found! Attempting direct DOM manipulation...');
+            // Last resort: find and update by scanning all text nodes
+            this.updateStatByTextSearch('Current Outstanding', 'R0.00', ui.formatCurrency(safeOutstanding));
+        }
+
+        if (paidEl) {
+            const formatted = ui.formatCurrency(safePaid);
+            paidEl.textContent = formatted;
+            console.log('✅ Set paid to:', formatted);
+        } else {
+            console.error('❌ Paid element not found!');
+        }
+
+        if (debtClientsEl) {
+            debtClientsEl.textContent = safeDebtCount;
+            console.log('✅ Set debt clients to:', debtClientsEl.textContent);
+        } else {
+            console.error('❌ Debt clients element not found! Attempting direct DOM manipulation...');
+            this.updateStatByTextSearch('Clients With Debt', '0', safeDebtCount.toString());
+        }
+
+        const periodName = this.selectedMonth ? 
+            new Date(this.selectedYear, this.selectedMonth - 1, 1).toLocaleDateString('en-US', { month: 'long' }) : 
+            'current';
+        
+        console.log(`📊 Stats Updated: ${safeClients} total clients, R${safeOutstanding.toFixed(2)} outstanding, R${safePaid.toFixed(2)} paid in ${periodName}, ${safeDebtCount} with debt.`);
+        
+        // Removed automatic notification popup - only show in console
+    }
+
+    // Helper method to update stats by searching for text patterns
+    updateStatByTextSearch(labelText, currentValue, newValue) {
+        const allElements = Array.from(document.querySelectorAll('*'));
+        
+        for (const el of allElements) {
+            const text = el.textContent?.trim();
+            const parent = el.parentElement;
+            
+            // Check if this element or nearby element contains the label
+            if (parent && parent.textContent?.includes(labelText)) {
+                // Look for the value element
+                const valueEl = Array.from(parent.querySelectorAll('*')).find(child => 
+                    child.textContent?.trim() === currentValue
+                );
+                
+                if (valueEl) {
+                    console.log(`🔄 Updated ${labelText} via text search: ${currentValue} → ${newValue}`);
+                    valueEl.textContent = newValue;
+                    return true;
+                }
+            }
+        }
+        
+        console.warn(`⚠️ Could not find element for ${labelText}`);
+        return false;
+    }
+
+    renderCreditorsList(customersWithDebt) {
+        // Explanation: Renders only current debtors (lifetime >0), with monthly breakdown for evaluation.
+        let creditHTML = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">';
+
+        Object.entries(customersWithDebt).forEach(([normKey, data]) => {
+            const customerName = data.name;
+            const outstanding = parseFloat(data.outstandingAmount) || 0;
+            const monthlySales = parseFloat(data.monthlySales) || 0;
+            const monthlyPaid = parseFloat(data.monthlyPaid) || 0;
+            const progressThisMonth = monthlySales > 0 ? Math.round((monthlyPaid / monthlySales) * 100) : 0;
+            const isUrgent = outstanding > 500;
+            const lastActivity = data.lastPurchase ? new Date(data.lastPurchase).toLocaleDateString() : 'N/A';
+            const periodName = this.selectedMonth ? new Date(this.selectedYear, this.selectedMonth - 1, 1).toLocaleDateString('en-US', { month: 'short' }) : 'mo';
+
+            creditHTML += `<div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 ${isUrgent ? 'border-red-500' : 'border-blue-500'}" data-customer-name="${customerName.toLowerCase()}" data-outstanding="${outstanding}">`;
+            creditHTML += `<h3 class="text-lg font-semibold text-gray-900 mb-2">${customerName}</h3>`;
+            creditHTML += '<div class="space-y-2 text-sm">';
+            creditHTML += `<div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R${outstanding.toFixed(2)}</span> <small>(lifetime - every penny owed)</small></div>`;
+            creditHTML += `<div><span class="font-medium">${periodName} Sales:</span> R${monthlySales.toFixed(2)}</div>`;
+            creditHTML += `<div><span class="font-medium">${periodName} Paid:</span> <span class="text-green-600">R${monthlyPaid.toFixed(2)}</span></div>`;
+            creditHTML += `<div><span class="font-medium">${periodName} Progress:</span> <span class="text-${progressThisMonth >= 50 ? 'green' : 'yellow'}-600">${progressThisMonth}%</span></div>`;
+            creditHTML += `<div><span class="font-medium">Last activity:</span> ${lastActivity}</div>`;
+            if (data.items && data.items.length > 0) {
+                creditHTML += `<div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> ${data.items.slice(-2).join(', ')}</div>`;
+            }
+            creditHTML += '</div>';
+            creditHTML += '<div class="mt-4 flex flex-wrap gap-2">';
+            creditHTML += `<button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal('${customerName.replace(/'/g, "\\'")}', ${outstanding}, 'partial')">Partial Payment</button>`;
+            creditHTML += `<button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal('${customerName.replace(/'/g, "\\'")}', ${outstanding}, 'full')">Full Payment</button>`;
+            if (isUrgent) {
+                creditHTML += `<button class="btn btn-sm btn-warning" onclick="window.app.creditors.followUpCustomer('${customerName.replace(/'/g, "\\'")}')">📞 Follow Up</button>`;
+            }
+            creditHTML += '</div></div>';
+        });
+
+        creditHTML += '</div>';
+
+        if (this.creditorsList) {
+            this.creditorsList.innerHTML = creditHTML;
+        }
+    }
+
+    renderNoActivity(totalClients, totalPaidThisMonth) {
+        // Explanation: Handles no current debt: If clients exist, celebrate collections; else, no activity yet.
+        const periodName = this.selectedMonth ? new Date(this.selectedYear, this.selectedMonth - 1, 1).toLocaleDateString('en-US', { month: 'long' }) : 'current period';
+        let message = '';
+        if (totalClients > 0) {
+            message = `<h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">All Clear! 🎉</h3>
+                       <p style="color: #6b7280; max-width: 400px; margin: 0 auto;">All ${totalClients} customers are fully paid up. Collected R${totalPaidThisMonth.toFixed(2)} in ${periodName}.</p>`;
+        } else {
+            message = `<h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">No Credit Activity Yet</h3>
+                       <p style="color: #6b7280; max-width: 400px; margin: 0 auto;">No credit sales or payments recorded. Start tracking!</p>`;
+        }
+
+        if (this.creditorsList) {
+            this.creditorsList.innerHTML = `
+                <div style="text-align: center; padding: 4rem; color: #10b981;">
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">🎉</div>
+                    ${message}
+                    <button onclick="window.app.creditors.loadCreditorsData()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">Refresh</button>
+                </div>
+            `;
+        }
+        // Removed automatic notification popup
+    }
+
+    openPaymentModal(customerName, outstandingAmount, paymentType) {
+        this.currentCustomer = customerName;
+        this.currentOutstanding = outstandingAmount;
+
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        
+        let monthOptionsHTML = '';
+        for (let i = -12; i <= 3; i++) {
+            const date = new Date(currentYear, currentMonth - 1 + i, 1);
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            const value = year + '-' + String(month).padStart(2, '0');
+            const isCurrentMonth = year === currentYear && month === currentMonth;
+            monthOptionsHTML += `<option value="${value}"${isCurrentMonth ? ' selected' : ''}>${monthName}</option>`;
+        }
+
+        const modalHTML = `<div id="payment-modal-custom" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+            <div style="background: white; padding: 0; border-radius: 12px; max-width: 600px; width: 90%; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+                <div style="padding: 1.5rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600;">Record Payment - ${customerName}</h3>
+                    <button onclick="document.getElementById('payment-modal-custom').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">&times;</button>
+                </div>
+                <div style="padding: 1.5rem; overflow-y: auto; max-height: calc(90vh - 140px);">
+                    <div style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #f59e0b;">
+                        <div style="font-weight: 600; color: #92400e; margin-bottom: 0.25rem;">Total Outstanding</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #92400e;">${ui.formatCurrency(outstandingAmount)}</div>
+                        <small style="color: #92400e;">Lifetime total owed - this payment reduces it permanently.</small>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Payment Amount *</label>
+                        <input type="number" id="payment-amount-input" placeholder="Enter amount" step="0.01" min="0" ${paymentType === 'full' ? `value="${outstandingAmount}"` : ''} style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;" required>
+                    </div>
+                    <div style="margin-bottom: 1rem; padding: 1rem; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #92400e;"><span style="margin-right: 0.5rem;">💡</span>Payment Period</label>
+                        <select id="payment-period-input" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; background: white;" required>
+                            ${monthOptionsHTML}
+                        </select>
+                        <div style="margin-top: 0.5rem; font-size: 0.875rem; color: #92400e;">Assign to a month for reporting (affects monthly paid stats).</div>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Payment Method *</label>
+                        <select id="payment-method-input" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;" required>
+                            <option value="">Select method</option>
+                            <option value="cash">Cash</option>
+                            <option value="card">Card</option>
+                            <option value="transfer">Bank Transfer</option>
+                            <option value="mobile">Mobile Money</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Date *</label>
+                        <input type="date" id="payment-date-input" value="${now.toISOString().split('T')[0]}" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;" required>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Received By *</label>
+                        <input type="text" id="payment-received-by-input" placeholder="Who received the payment?" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;" required>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Notes (optional)</label>
+                        <textarea id="payment-notes-input" rows="3" placeholder="Payment notes (optional)" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;"></textarea>
+                    </div>
+                </div>
+                <div style="padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; display: flex; gap: 0.75rem; justify-content: flex-end;">
+                    <button onclick="document.getElementById('payment-modal-custom').remove()" style="padding: 0.75rem 1.5rem; border: 1px solid #d1d5db; background: white; color: #374151; border-radius: 6px; font-weight: 600; cursor: pointer;">Cancel</button>
+                    <button onclick="window.app.creditors.savePayment()" style="padding: 0.75rem 1.5rem; border: none; background: #3b82f6; color: white; border-radius: 6px; font-weight: 600; cursor: pointer;">💾 Record Payment</button>
+                </div>
+            </div>
+        </div>`;
+
+        const existing = document.getElementById('payment-modal-custom');
+        if (existing) existing.remove();
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    async savePayment() {
+        const amountEl = document.getElementById('payment-amount-input');
+        const methodEl = document.getElementById('payment-method-input');
+        const dateEl = document.getElementById('payment-date-input');
+        const receivedByEl = document.getElementById('payment-received-by-input');
+        const notesEl = document.getElementById('payment-notes-input');
+        const periodEl = document.getElementById('payment-period-input');
+
+        const amount = amountEl?.value;
+        const method = methodEl?.value;
+        const date = dateEl?.value;
+        const receivedBy = receivedByEl?.value;
+        const notes = notesEl?.value || '';
+        const period = periodEl?.value;
+
+        if (!amount || !method || !date || !receivedBy || !period) {
+            this.showNotification('Please fill in all required fields.', 'warning');
+            return;
+        }
+
+        const paymentAmount = parseFloat(amount);
+        if (isNaN(paymentAmount) || paymentAmount <= 0) {
+            this.showNotification('Payment amount must be greater than 0.', 'error');
+            return;
+        }
+
+        try {
+            const [year, month] = period.split('-').map(Number);
+            
+            if (!year || !month) {
+                this.showNotification('Invalid period selected.', 'error');
+                return;
+            }
+            
+            const paymentData = {
+                id: 'payment_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                customer_name: this.currentCustomer,
+                amount: paymentAmount,
+                date: date,
+                applies_to_period: { month: month, year: year },
+                type: 'payment',
+                payment_method: method,
+                received_by: receivedBy,
+                notes: notes,
+                created_at: new Date().toISOString()
+            };
+
+            console.log('💾 Saving payment:', paymentData);
+            
+            if (typeof storage.addPayment === 'function') {
+                await storage.addPayment(paymentData);
+            } else if (typeof storage.savePayment === 'function') {
+                await storage.savePayment(paymentData);
+            } else {
+                const payments = storage.getPayments() || [];
+                payments.push(paymentData);
+                
+                if (typeof storage.savePayments === 'function') {
+                    await storage.savePayments(payments);
+                } else {
+                    console.error('❌ No payment save method available in storage!');
+                    throw new Error('Storage does not support saving payments');
+                }
+            }
+
+            const modal = document.getElementById('payment-modal-custom');
+            if (modal) modal.remove();
+            
+            this.showNotification('Payment of ' + ui.formatCurrency(paymentAmount) + ' recorded for ' + this.currentCustomer + '!', 'success');
+            
+            console.log('🔄 Reloading...');
+            this.isLoaded = false;
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await storage.loadAllData();
+            await this.loadCreditorsData();
+            
+            console.log('✅ Reloaded');
+
+        } catch (error) {
+            console.error('Error recording payment:', error);
+            this.showNotification('Error recording payment: ' + error.message, 'error');
+        }
+    }
+
+    filterCreditors() {
+        const searchTerm = (this.searchInput?.value || '').toLowerCase().trim();
+        const filterType = this.filterSelect?.value || 'all';
+
+        console.log('🔍 Filtering creditors - Search:', searchTerm, 'Filter:', filterType);
+
+        const cards = document.querySelectorAll('.credit-card');
+        
+        if (cards.length === 0) {
+            console.warn('⚠️ No credit cards found to filter');
+            return;
+        }
+
+        let visibleCount = 0;
+        
+        cards.forEach(card => {
+            const name = (card.getAttribute('data-customer-name') || '').toLowerCase();
+            const outstanding = parseFloat(card.getAttribute('data-outstanding') || 0);
+
+            let show = true;
+            
+            if (searchTerm && !name.includes(searchTerm)) {
+                show = false;
+            }
+            
+            if (filterType === 'debt' && outstanding <= 0) {
+                show = false;
+            } else if (filterType === 'paid' && outstanding > 0) {
+                show = false;
+            }
+
+            card.style.display = show ? 'block' : 'none';
+            if (show) visibleCount++;
+        });
+
+        console.log('✅ Filtered: ' + visibleCount + ' of ' + cards.length + ' customers visible');
+    }
+
+    followUpCustomer(customerName) {
+        this.showNotification('Follow-up reminder set for ' + customerName + '. Integrate with your messaging system.', 'info');
+    }
+}
+
+export const creditors = new CreditorsManager();

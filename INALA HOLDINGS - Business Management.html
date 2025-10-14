@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<!-- saved from url=(0022)http://localhost:3000/ -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INALA HOLDINGS - Business Management</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com/">
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+    <link href="./INALA HOLDINGS - Business Management_files/css2" rel="stylesheet">
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="./INALA HOLDINGS - Business Management_files/main.css">
+    <link rel="stylesheet" href="./INALA HOLDINGS - Business Management_files/components.css">
+    <link rel="stylesheet" href="./INALA HOLDINGS - Business Management_files/responsive.css">
+    
+    <style>
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.25rem;
+            padding: 1.25rem 0;
+        }
+        
+        .logo-container {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            overflow: hidden;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+            border: 4px solid white;
+            flex-shrink: 0;
+        }
+        
+        .logo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .header-text {
+            text-align: left;
+            line-height: 1.1;
+        }
+        
+        .business-name {
+            font-size: 3rem !important;
+            margin: 0 !important;
+            line-height: 1 !important;
+            font-weight: 700 !important;
+        }
+        
+        .tagline {
+            font-size: 1.1rem !important;
+            margin: 0.75rem 0 0 0 !important;
+            line-height: 1.2 !important;
+        }
+        
+        @media (max-width: 768px) {
+            .logo-container {
+                width: 75px;
+                height: 75px;
+            }
+            
+            .business-name {
+                font-size: 2.25rem !important;
+            }
+            
+            .tagline {
+                font-size: 1rem !important;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .header-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .header-text {
+                text-align: center;
+            }
+            
+            .logo-container {
+                width: 70px;
+                height: 70px;
+            }
+            
+            .business-name {
+                font-size: 2rem !important;
+            }
+            
+            .tagline {
+                font-size: 0.95rem !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" style="display: block;">
+        <!-- Header with Logo -->
+        <header class="header">
+            <div class="header-container">
+                <div class="logo-container">
+                    <img src="./INALA HOLDINGS - Business Management_files/logo.jpg" alt="Inala Holdings Logo" onerror="this.style.display=&#39;none&#39;">
+                </div>
+                <div class="header-text">
+                    <h1 class="business-name">INALA HOLDINGS</h1>
+                    <p class="tagline">Next-Generation Business Management</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs" id="main-nav">
+            <button class="nav-btn" data-section="sales">
+                💰 Sales
+            </button>
+        
+            <button class="nav-btn" data-section="expenditure">
+                💸 Expenditure
+            </button>
+        
+            <button class="nav-btn active" data-section="reports">
+                📊 Reports
+            </button>
+        
+            <button class="nav-btn" data-section="finances">
+                💼 Business Finances
+            </button>
+        
+            <button class="nav-btn" data-section="admin">
+                ⚙️ Admin
+            </button>
+        </nav>
+
+        <!-- Alert Container -->
+        <div id="alert-container"></div>
+        
+        <!-- Sales Tab -->
+        <div id="sales-content" class="tab-content hidden">
+            <div class="content-card">
+                <h2 class="card-title">💰 Sales Transaction</h2>
+                <form id="sales-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Date *</label>
+                            <input type="date" class="form-input" name="date" required="">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Product *</label>
+                            <select class="form-select" name="product" required="" id="product-select"><option value="">Select product</option><option value="Beef" data-price="300">Beef</option><option value="Wors" data-price="300">Wors</option><option value="Pork" data-price="280">Pork</option><option value="Bones" data-price="200">Bones</option><option value="Oxtail" data-price="100">Oxtail</option><option value="Head &amp; Hooves" data-price="350">Head &amp; Hooves</option><option value="Liver &amp; Lungs" data-price="200">Liver &amp; Lungs</option><option value="Layers Chicken" data-price="100">Layers Chicken</option><option value="Offals" data-price="100">Offals</option><option value="Body Mist" data-price="100">Body Mist</option><option value="Perfume 300" data-price="300">Perfume 300</option><option value="Perfume 350" data-price="350">Perfume 350</option><option value="Perfume 450" data-price="450">Perfume 450</option><option value="Perfume 600" data-price="600">Perfume 600</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Quantity *</label>
+                            <input type="number" class="form-input" name="quantity" placeholder="Enter quantity" min="1" required="" id="quantity-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Unit Price *</label>
+                            <select class="form-select" name="price" required="" id="price-select"><option value="100">R100</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Total Amount</label>
+                            <input type="text" class="form-input" id="total-amount" readonly="" placeholder="R0.00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Payment Type *</label>
+                            <select class="form-select" name="payment" required="" id="payment-type">
+                                <option value="">Select payment type</option>
+                                <option value="cash">Cash</option>
+                                <option value="mobile money">Mobile Money</option>
+                                <option value="bank transfer">Bank Transfer</option>
+                                <option value="credit">Credit</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="credit-customer-group" style="display: none;">
+                            <label class="form-label">Customer Name *</label>
+                            <div style="position: relative;">
+                                <input type="text" class="form-input" id="customer-name" name="customer_name" placeholder="Type customer name..." autocomplete="off" data-customer-id="STlJRI3IycRmP0utL3vW">
+                                <div id="customer-dropdown" class="customer-dropdown">
+                <div class="customer-option existing-customer" data-customer-id="STlJRI3IycRmP0utL3vW" data-customer-name="Sis wa Lelo">
+                    <div>Sis wa Lelo</div>
+                    <div class="customer-details">Last purchase: 2025-10-12</div>
+                </div>
+            </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">💾 Save Sale</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Expenditure Tab -->
+        <div id="expenditure-content" class="tab-content hidden">
+            <div class="content-card">
+                <h2 class="card-title">💸 Business Expenditure</h2>
+                <form id="expenditure-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Date *</label>
+                            <input type="date" class="form-input" name="date" required="">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Business Unit *</label>
+                            <select class="form-select" name="business_unit" required="" id="business-unit-select">
+                                <option value="">Select business unit</option>
+                                <option value="butchery">Butchery</option>
+                                <option value="perfumes">Perfumes</option>
+                                <option value="consumables">Consumables</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category *</label>
+                            <select class="form-select" name="category" required="" id="category-select">
+                                <option value="">Select category</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Amount *</label>
+                            <input type="number" class="form-input" name="amount" placeholder="Enter amount" step="0.01" min="0" required="">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Payment Method *</label>
+                            <select class="form-select" name="payment_method" required="">
+                                <option value="">Select payment method</option>
+                                <option value="cash">Cash</option>
+                                <option value="bank transfer">Bank Transfer</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-input" name="description" placeholder="Description of expense">
+                    </div>
+                    <button type="submit" class="btn btn-primary">💾 Save Expenditure</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Reports Tab -->
+        <div id="reports-content" class="tab-content">
+            <div class="content-card">
+                <h2 class="card-title">📊 Monthly Performance Overview</h2>
+                <div class="stats-grid">
+                    <div class="stat-card sales">
+                        <div class="stat-label">Total Sales</div>
+                        <div class="stat-value green" id="report-total-sales">R18530.00</div>
+                    </div>
+                    <div class="stat-card expenses">
+                        <div class="stat-label">Total Expenses</div>
+                        <div class="stat-value red" id="report-total-expenses">R17050.00</div>
+                    </div>
+                    <div class="stat-card profit">
+                        <div class="stat-label">Net Profit</div>
+                        <div class="stat-value green" id="report-net-profit">R1480.00</div>
+                    </div>
+                    <div class="stat-card transactions">
+                        <div class="stat-label">Transactions</div>
+                        <div class="stat-value blue" id="report-transactions">38</div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                    <button class="btn btn-primary" id="manage-credit-btn" style="cursor: pointer;">🏢 Manage Credits</button>
+                    <button class="btn btn-secondary" id="creditors-report-btn">📋 Creditors Report</button>
+                    <button class="btn btn-secondary" id="all-transactions-btn">📊 All Transactions</button>
+                    <button class="btn btn-secondary" id="collection-report-btn">💰 Payment Collection Report</button>
+                    <button class="btn btn-secondary" id="month-comparison-btn">📈 Month Comparison</button>
+                </div>
+
+                <div class="reports-header" style="position: relative;"><div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight: 600; color: #374151;">Filter Period:</label>
+                    <select id="month-filter" class="form-select" style="width: 150px;">
+                        <option value="all">All Time</option>
+                        <option value="current" selected="">Current Month</option>
+                        <option value="custom">Custom Month</option>
+                    </select>
+                    <input type="month" id="custom-month" class="form-input" style="width: 180px; display: none;">
+                    <button id="apply-filter-btn" class="btn btn-primary" style="display: none;">Apply</button>
+                    <button id="clear-filter-btn" class="btn btn-secondary" style="display: none;">Clear Filter</button>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-left: 1rem;">
+                        <input type="checkbox" id="business-cycle-toggle" style="width: auto;">
+                        <span style="font-size: 0.875rem; color: #374151;">Use Business Cycle (5th-4th)</span>
+                    </label>
+                    <span id="filter-status" style="color: rgb(59, 130, 246); font-size: 0.875rem; font-weight: 600;">Showing: October 2025 (Calendar Month)</span>
+                </div>
+            </div>
+                    <div id="reports-display"><div id="category-breakdown"><div class="content-card" style="margin-top: 2rem;"><h4 style="margin-bottom: 1.5rem; color: #374151;">Business Category Performance - October 2025</h4><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;"><div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;"><h5 style="margin: 0; color: #374151; font-size: 1.1rem;">Beef Products</h5><span style="background: #d1fae5; color: #065f46; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600;">PROFITABLE</span></div><div style="color: #10b981; font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; text-align: center;">R5050.00</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem;"><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">SALES</div><div style="color: #10b981; font-weight: 600;">R14050.00</div></div><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">EXPENSES</div><div style="color: #ef4444; font-weight: 600;">R9000.00</div></div><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">TRANSACTIONS</div><div style="color: #6b7280; font-weight: 600;">31</div></div><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">MARGIN</div><div style="color: #10b981; font-weight: 600;">35.9%</div></div></div><div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f3f4f6;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.5rem;">Top Products:</div><div style="font-size: 0.75rem; color: #9ca3af;">Beef (25), Wors (20), Offals (2)</div></div></div><div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;"><h5 style="margin: 0; color: #374151; font-size: 1.1rem;">Pork Products</h5><span style="background: #fee2e2; color: #dc2626; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600;">LOSS</span></div><div style="color: #ef4444; font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; text-align: center;">R-1670.00</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem;"><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">SALES</div><div style="color: #10b981; font-weight: 600;">R4480.00</div></div><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">EXPENSES</div><div style="color: #ef4444; font-weight: 600;">R6150.00</div></div><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">TRANSACTIONS</div><div style="color: #6b7280; font-weight: 600;">4</div></div><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">MARGIN</div><div style="color: #ef4444; font-weight: 600;">-37.3%</div></div></div><div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f3f4f6;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.5rem;">Top Products:</div><div style="font-size: 0.75rem; color: #9ca3af;">Pork (16)</div></div></div><div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;"><h5 style="margin: 0; color: #374151; font-size: 1.1rem;">Chicken Products</h5><span style="background: #d1fae5; color: #065f46; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600;">PROFITABLE</span></div><div style="color: #10b981; font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; text-align: center;">R0.00</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem;"><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">SALES</div><div style="color: #10b981; font-weight: 600;">R0.00</div></div><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">EXPENSES</div><div style="color: #ef4444; font-weight: 600;">R0.00</div></div><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">TRANSACTIONS</div><div style="color: #6b7280; font-weight: 600;">0</div></div><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">MARGIN</div><div style="color: #10b981; font-weight: 600;">0.0%</div></div></div></div></div><div style="margin-top: 2rem; padding: 1.5rem; background: #f8fafc; border-radius: 8px;"><h5 style="margin: 0 0 1rem 0; color: #374151;">Overall Summary</h5><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;"><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.875rem;">Total Sales</div><div style="color: #10b981; font-size: 1.25rem; font-weight: 700;">R18530.00</div></div><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.875rem;">Total Expenses</div><div style="color: #ef4444; font-size: 1.25rem; font-weight: 700;">R17050.00</div></div><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.875rem;">Net Profit</div><div style="color: #10b981; font-size: 1.25rem; font-weight: 700;">R1480.00</div></div><div style="text-align: center;"><div style="color: #6b7280; font-size: 0.875rem;">Profit Margin</div><div style="color: #10b981; font-size: 1.25rem; font-weight: 700;">8.0%</div></div></div></div></div></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Creditors Tab -->
+        <div id="creditors-content" class="tab-content hidden">
+            <div class="content-card">
+                <h2 class="card-title">🏢 Credit Management</h2>
+                <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Credit Clients</div>
+                        <div class="stat-value blue" id="total-credit-clients">47</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Current Outstanding</div>
+                        <div class="stat-value red" id="total-amount-owed">R20880.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Amount Paid</div>
+                        <div class="stat-value green" id="total-amount-paid">R2450.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Clients With Debt</div>
+                        <div class="stat-value blue" id="outstanding-debts">28</div>
+                    </div>
+                </div>
+                
+                <h3 style="margin: 2rem 0 1rem 0; font-size: 1.25rem; color: #374151;">Credit Management</h3>
+                <div class="search-section">
+                    <input type="text" class="search-input" id="creditor-search" placeholder="Search by creditor name...">
+                    <select class="filter-select" id="creditor-filter">
+                        <option value="all">All Creditors</option>
+                        <option value="outstanding">Outstanding Only</option>
+                        <option value="paid">Paid Off Only</option>
+                    </select>
+                    <button class="refresh-btn" id="refresh-creditors-btn">🔄 Refresh</button>
+                </div>
+                
+                <div id="creditors-list"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="sbu" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Sbu</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/9/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Sbu&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Sbu&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="maye" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Maye</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/9/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300), Beef (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Maye&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Maye&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500" data-customer-name="sakhelwe" data-outstanding="1800" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Sakhelwe</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R1800.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R1800.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/9/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Oxtail (1x R100), Beef (3x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Sakhelwe&#39;, 1800, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Sakhelwe&#39;, 1800, &#39;full&#39;)">Full Payment</button><button class="btn btn-sm btn-warning" onclick="window.app.creditors.followUpCustomer(&#39;Sakhelwe&#39;)">📞 Follow Up</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500" data-customer-name="senamile makama" data-outstanding="7480" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Senamile Makama</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R7480.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R7480.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/12/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Pork (16x R280), Wors (5x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Senamile Makama&#39;, 7480, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Senamile Makama&#39;, 7480, &#39;full&#39;)">Full Payment</button><button class="btn btn-sm btn-warning" onclick="window.app.creditors.followUpCustomer(&#39;Senamile Makama&#39;)">📞 Follow Up</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500" data-customer-name="lelo" data-outstanding="1500" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Lelo</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R1500.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R1500.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R600.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">40%</span></div><div><span class="font-medium">Last activity:</span> 10/10/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (3x R300), Offals (3x R100)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Lelo&#39;, 1500, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Lelo&#39;, 1500, &#39;full&#39;)">Full Payment</button><button class="btn btn-sm btn-warning" onclick="window.app.creditors.followUpCustomer(&#39;Lelo&#39;)">📞 Follow Up</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="sibandze" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Sibandze</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/9/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300), Beef (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Sibandze&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Sibandze&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="mabuza" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Mabuza</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/9/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300), Beef (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Mabuza&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Mabuza&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500" data-customer-name="samkeliso" data-outstanding="1200" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Samkeliso</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R1200.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R0.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 9/12/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Wors (3x R300), Beef (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Samkeliso&#39;, 1200, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Samkeliso&#39;, 1200, &#39;full&#39;)">Full Payment</button><button class="btn btn-sm btn-warning" onclick="window.app.creditors.followUpCustomer(&#39;Samkeliso&#39;)">📞 Follow Up</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="gama" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Gama</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/9/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Gama&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Gama&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500" data-customer-name="mbuso interfreight" data-outstanding="600" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Mbuso Interfreight</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R600.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R0.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 9/18/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300), Wors (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Mbuso Interfreight&#39;, 600, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Mbuso Interfreight&#39;, 600, &#39;full&#39;)">Full Payment</button><button class="btn btn-sm btn-warning" onclick="window.app.creditors.followUpCustomer(&#39;Mbuso Interfreight&#39;)">📞 Follow Up</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500" data-customer-name="babe khoza" data-outstanding="600" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Babe Khoza</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R600.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R0.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 9/13/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300), Wors (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Babe Khoza&#39;, 600, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Babe Khoza&#39;, 600, &#39;full&#39;)">Full Payment</button><button class="btn btn-sm btn-warning" onclick="window.app.creditors.followUpCustomer(&#39;Babe Khoza&#39;)">📞 Follow Up</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="lavas" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Lavas</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/12/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300), Beef (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Lavas&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Lavas&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="phindile" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Phindile</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R0.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 9/11/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Phindile&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Phindile&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500" data-customer-name="sisi we mbila" data-outstanding="1200" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Sisi We Mbila</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R1200.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R1200.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R300.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">25%</span></div><div><span class="font-medium">Last activity:</span> 10/12/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (2x R300), Wors (2x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Sisi We Mbila&#39;, 1200, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Sisi We Mbila&#39;, 1200, &#39;full&#39;)">Full Payment</button><button class="btn btn-sm btn-warning" onclick="window.app.creditors.followUpCustomer(&#39;Sisi We Mbila&#39;)">📞 Follow Up</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="sisana" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Sisana</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/9/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Wors (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Sisana&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Sisana&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="khetsiwe" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Khetsiwe</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/12/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Khetsiwe&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Khetsiwe&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="dlamini ra" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Dlamini RA</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/12/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Wors (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Dlamini RA&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Dlamini RA&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500" data-customer-name="samkelo" data-outstanding="900" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Samkelo</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R900.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R0.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 9/12/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (3x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Samkelo&#39;, 900, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Samkelo&#39;, 900, &#39;full&#39;)">Full Payment</button><button class="btn btn-sm btn-warning" onclick="window.app.creditors.followUpCustomer(&#39;Samkelo&#39;)">📞 Follow Up</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="lungelo" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Lungelo</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/9/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300), Beef (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Lungelo&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Lungelo&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="mhlanga" data-outstanding="100" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Mhlanga</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R100.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R0.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 9/21/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Offals (1x R100)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Mhlanga&#39;, 100, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Mhlanga&#39;, 100, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="simphiwe lukhele" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Simphiwe Lukhele</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R0.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 9/29/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (3x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Simphiwe Lukhele&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Simphiwe Lukhele&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="msutfu" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Msutfu</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/9/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Wors (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Msutfu&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Msutfu&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="bongiwe" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Bongiwe</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/9/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Wors (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Bongiwe&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Bongiwe&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="titi salon" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Titi Salon</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/12/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Wors (1x R300), Wors (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Titi Salon&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Titi Salon&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="dlamini labor" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Dlamini Labor</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/12/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Dlamini Labor&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Dlamini Labor&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="dlamini passports" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Dlamini passports</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/12/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Wors (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Dlamini passports&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Dlamini passports&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="zoe" data-outstanding="100" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Zoe</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R100.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R100.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/11/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Offals (1x R100)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Zoe&#39;, 100, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Zoe&#39;, 100, &#39;full&#39;)">Full Payment</button></div></div><div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500" data-customer-name="sizolwethu’s girlfriend" data-outstanding="300" style="display: block;"><h3 class="text-lg font-semibold text-gray-900 mb-2">Sizolwethu’s girlfriend</h3><div class="space-y-2 text-sm"><div><span class="font-medium">Total Outstanding:</span> <span class="text-red-600 font-bold">R300.00</span> <small>(lifetime - every penny owed)</small></div><div><span class="font-medium">Oct Sales:</span> R300.00</div><div><span class="font-medium">Oct Paid:</span> <span class="text-green-600">R0.00</span></div><div><span class="font-medium">Oct Progress:</span> <span class="text-yellow-600">0%</span></div><div><span class="font-medium">Last activity:</span> 10/12/2025</div><div class="mt-2 p-2 bg-gray-50 rounded text-xs"><span class="font-medium">Recent Items:</span> Beef (1x R300)</div></div><div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-sm btn-outline" onclick="window.app.creditors.openPaymentModal(&#39;Sizolwethu’s girlfriend&#39;, 300, &#39;partial&#39;)">Partial Payment</button><button class="btn btn-sm btn-primary" onclick="window.app.creditors.openPaymentModal(&#39;Sizolwethu’s girlfriend&#39;, 300, &#39;full&#39;)">Full Payment</button></div></div></div></div>
+            </div>
+        </div>
+		
+        <!-- Finances Tab -->
+        <div id="finances-content" class="tab-content hidden">
+            <div class="content-card">
+                <div id="finances-display">
+            <style>
+                .finance-card {
+                    background: white;
+                    border-radius: 12px;
+                    padding: 1.5rem;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    transition: transform 0.2s;
+                }
+                .finance-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                }
+                .bill-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 1rem;
+                    background: #f9fafb;
+                    border-radius: 8px;
+                    margin-bottom: 0.5rem;
+                    border: 1px solid #e5e7eb;
+                }
+                .bill-item:hover {
+                    background: #f3f4f6;
+                }
+            </style>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2 style="margin: 0; font-size: 1.75rem; color: #1f2937;">💰 Personal Finances</h2>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <input type="month" id="finance-month-picker" value="2025-09" class="form-input" style="width: 180px;">
+                    <button onclick="window.app.finances.changeMonth()" class="btn btn-primary">Load Month</button>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px; padding: 2.5rem; margin-bottom: 2rem; text-align: center; box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);">
+                <div style="font-size: 0.875rem; opacity: 0.95; margin-bottom: 0.5rem; letter-spacing: 1px; text-transform: uppercase;">
+                    September 2025 - Projected Savings
+                </div>
+                <div style="font-size: 3.5rem; font-weight: 700; margin: 0.5rem 0;">
+                    R2151.00
+                </div>
+                <div style="font-size: 0.95rem; opacity: 0.9; margin-top: 0.5rem;">
+                    ✓ Positive savings this month
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                <div class="finance-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0);">
+                    <div style="font-size: 0.875rem; color: #065f46; margin-bottom: 0.5rem; font-weight: 600;">Business Profit</div>
+                    <div style="font-size: 2.5rem; font-weight: 700; color: #10b981;">R4851.00</div>
+                    <div style="font-size: 0.75rem; color: #059669; margin-top: 0.5rem;">
+                        Sales: R16650.00 - Expenses: R11799.00
+                    </div>
+                </div>
+
+                <div class="finance-card" style="background: linear-gradient(135deg, #fee2e2, #fecaca);">
+                    <div style="font-size: 0.875rem; color: #991b1b; margin-bottom: 0.5rem; font-weight: 600;">Household Bills</div>
+                    <div style="font-size: 2.5rem; font-weight: 700; color: #ef4444;">R2700.00</div>
+                    <div style="font-size: 0.75rem; color: #dc2626; margin-top: 0.5rem;">
+                        3 bills this month
+                    </div>
+                </div>
+
+                <div class="finance-card" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe);">
+                    <div style="font-size: 0.875rem; color: #1e40af; margin-bottom: 0.5rem; font-weight: 600;">Total Saved (All Time)</div>
+                    <div style="font-size: 2.5rem; font-weight: 700; color: #3b82f6;">R2931.00</div>
+                    <div style="font-size: 0.75rem; color: #2563eb; margin-top: 0.5rem;">
+                        Across 2 months
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                <div class="finance-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0; font-size: 1.25rem; color: #1f2937;">Household Bills</h3>
+                        <button onclick="window.app.finances.addBill()" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                            + Add Bill
+                        </button>
+                    </div>
+                    
+                    
+                        <div class="bill-item">
+                            <div>
+                                <div style="font-weight: 600; color: #1f2937; font-size: 1rem;">Nanny</div>
+                                
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="font-size: 1.25rem; font-weight: 700; color: #ef4444;">R1500.00</div>
+                                <button onclick="window.app.finances.editBill(&#39;bill_1759523524010&#39;)" style="background: none; border: none; color: #6b7280; cursor: pointer; font-size: 1.25rem;">✏️</button>
+                                <button onclick="window.app.finances.deleteBill(&#39;bill_1759523524010&#39;)" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.25rem;">🗑️</button>
+                            </div>
+                        </div>
+                    
+                        <div class="bill-item">
+                            <div>
+                                <div style="font-weight: 600; color: #1f2937; font-size: 1rem;">Malume</div>
+                                
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="font-size: 1.25rem; font-weight: 700; color: #ef4444;">R900.00</div>
+                                <button onclick="window.app.finances.editBill(&#39;bill_1759563293474&#39;)" style="background: none; border: none; color: #6b7280; cursor: pointer; font-size: 1.25rem;">✏️</button>
+                                <button onclick="window.app.finances.deleteBill(&#39;bill_1759563293474&#39;)" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.25rem;">🗑️</button>
+                            </div>
+                        </div>
+                    
+                        <div class="bill-item">
+                            <div>
+                                <div style="font-weight: 600; color: #1f2937; font-size: 1rem;">Hair</div>
+                                
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="font-size: 1.25rem; font-weight: 700; color: #ef4444;">R300.00</div>
+                                <button onclick="window.app.finances.editBill(&#39;bill_1759563311245&#39;)" style="background: none; border: none; color: #6b7280; cursor: pointer; font-size: 1.25rem;">✏️</button>
+                                <button onclick="window.app.finances.deleteBill(&#39;bill_1759563311245&#39;)" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.25rem;">🗑️</button>
+                            </div>
+                        </div>
+                    
+                </div>
+
+                <div class="finance-card">
+                    <h3 style="margin: 0 0 1.5rem 0; font-size: 1.25rem; color: #1f2937;">Savings History</h3>
+                    
+                    
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            
+                                    <div style="padding: 1rem; border-bottom: 1px solid #e5e7eb; background: #f0f9ff; border-left: 3px solid #3b82f6;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <div style="font-weight: 600; color: #1f2937;">September 2025</div>
+                                                <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
+                                                    Profit: R4851.00 - Bills: R2700.00
+                                                </div>
+                                            </div>
+                                            <div style="font-size: 1.25rem; font-weight: 700; color: #10b981;">
+                                                R2151.00
+                                            </div>
+                                        </div>
+                                    </div>
+                                
+                                    <div style="padding: 1rem; border-bottom: 1px solid #e5e7eb; ">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <div style="font-weight: 600; color: #1f2937;">October 2025</div>
+                                                <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
+                                                    Profit: R780.00 - Bills: R0.00
+                                                </div>
+                                            </div>
+                                            <div style="font-size: 1.25rem; font-weight: 700; color: #10b981;">
+                                                R780.00
+                                            </div>
+                                        </div>
+                                    </div>
+                                
+                        </div>
+                    
+                </div>
+            </div>
+
+            <div class="finance-card" style="background: #fef3c7; border: 2px solid #fde68a;">
+                <h3 style="margin: 0 0 1rem 0; color: #92400e; font-size: 1.125rem;">💡 Quick Tips</h3>
+                <ul style="margin: 0; padding-left: 1.5rem; color: #78350f;">
+                    <li style="margin-bottom: 0.5rem;">Add recurring bills like Nanny, Malume, and weekly Lunch expenses</li>
+                    <li style="margin-bottom: 0.5rem;">Use the month picker to view past performance and plan ahead</li>
+                    <li style="margin-bottom: 0.5rem;">Your savings history tracks month-over-month to show progress</li>
+                    <li>Green means surplus, red means deficit - adjust accordingly</li>
+                </ul>
+            </div>
+        </div>
+            </div>
+        </div>
+
+        <!-- Personal Budget Tab -->
+        <div id="personal-budget-content" class="tab-content hidden">
+            <div class="content-card">
+                <div id="personal-budget-display"><div><div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem;"><h2 style="margin: 0;">My Personal Budget</h2><div style="display: flex; gap: 0.5rem;"><button class="btn btn-secondary">←</button><button class="btn btn-secondary">→</button><button class="btn btn-primary">Setup</button></div></div><div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;"><div style="background: #10b981; color: white; padding: 1rem; border-radius: 8px; text-align: center;"><div style="font-size: 0.75rem;">Income</div><div style="font-size: 1.5rem; font-weight: 700;">R23000.00</div></div><div style="background: #ef4444; color: white; padding: 1rem; border-radius: 8px; text-align: center;"><div style="font-size: 0.75rem;">Expenses</div><div style="font-size: 1.5rem; font-weight: 700;">R8600.00</div></div><div style="background: #3b82f6; color: white; padding: 1rem; border-radius: 8px; text-align: center;"><div style="font-size: 0.75rem;">Savings</div><div style="font-size: 1.5rem; font-weight: 700;">R3500.00</div></div><div style="background: #10b981; color: white; padding: 1rem; border-radius: 8px; text-align: center;"><div style="font-size: 0.75rem;">Balance</div><div style="font-size: 1.5rem; font-weight: 700;">R10900.00</div></div></div><div style="background: linear-gradient(135deg, rgb(102, 126, 234), rgb(118, 75, 162)); color: white; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;"><div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;"><span style="font-size: 1.5rem;">🤖</span><h3 style="margin: 0; font-size: 1.125rem;">AI Financial Assistant</h3></div><div id="ai-chat-messages" style="background: rgba(255, 255, 255, 0.1); border-radius: 6px; padding: 1rem; margin-bottom: 1rem; max-height: 200px; overflow-y: auto; min-height: 80px;"><div style="font-size: 0.9rem; opacity: 0.95;">Hi! Ask me about your budget, savings, or how to improve your finances.</div></div><div style="display: flex; gap: 0.5rem;"><input type="text" id="ai-chat-input" placeholder="Ask me anything..." style="flex: 1 1 0%; padding: 0.75rem; border: none; border-radius: 6px;"><button style="background: white; color: rgb(102, 126, 234); border: none; padding: 0.75rem 1.5rem; border-radius: 6px; font-weight: 600; cursor: pointer;">Send</button></div><div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem;"><button style="background: rgba(255, 255, 255, 0.2); border: none; padding: 0.5rem 0.75rem; border-radius: 6px; color: white; font-size: 0.8rem; cursor: pointer;">How can I save more?</button><button style="background: rgba(255, 255, 255, 0.2); border: none; padding: 0.5rem 0.75rem; border-radius: 6px; color: white; font-size: 0.8rem; cursor: pointer;">Where am I overspending?</button><button style="background: rgba(255, 255, 255, 0.2); border: none; padding: 0.5rem 0.75rem; border-radius: 6px; color: white; font-size: 0.8rem; cursor: pointer;">How do I make more money?</button></div></div></div></div>
+            </div>
+        </div>
+
+        <!-- Admin Tab -->
+        <div id="admin-content" class="tab-content hidden">
+            <div class="content-card">
+                <h2 class="card-title">⚙️ Admin Panel</h2>
+                
+                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Sales Records</div>
+                        <div class="stat-value blue" id="admin-total-sales">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Expense Records</div>
+                        <div class="stat-value blue" id="admin-total-expenses">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Payment Records</div>
+                        <div class="stat-value blue" id="admin-total-payments">0</div>
+                    </div>
+                </div>
+
+                <div style="background: #fee2e2; border: 1px solid #fecaca; padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
+                    <h3 style="color: #991b1b; margin-bottom: 1rem;">⚠️ Data Management</h3>
+                    <p style="color: #7f1d1d; margin-bottom: 1rem;">
+                        These actions will permanently delete transaction data. Customer records will be preserved.
+                    </p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                        <button class="btn btn-secondary" id="clear-test-data-btn" style="background: #ef4444; color: white;">
+                            🗑️ Clear All Test Data
+                        </button>
+                        <button class="btn btn-secondary" id="export-monthly-btn" style="background: #3b82f6; color: white;">
+                            📊 Generate Monthly Report
+                        </button>
+                        <button class="btn btn-secondary" id="monthly-reset-btn" style="background: #f59e0b; color: white;">
+                            📅 Monthly Reset (25th)
+                        </button>
+                        <button class="btn btn-secondary" id="remove-duplicates-btn" style="background: #8b5cf6; color: white;">
+                            🧹 Remove Duplicate Expenses
+                        </button>
+                        <button class="btn btn-secondary" id="manage-expenditures-btn" style="background: #dc2626; color: white;">
+                            💸 Manage Expenditures
+                        </button>
+                    </div>
+                </div>
+
+                <div style="background: #f3f4f6; padding: 1.5rem; border-radius: 8px;">
+                    <h3 style="margin-bottom: 1rem;">🔧 Monthly Automation Setup</h3>
+                    <p style="margin-bottom: 1rem; color: #6b7280;">
+                        Email: mangaliso.s@gmail.com<br>
+                        Schedule: 25th of every month<br>
+                        Actions: Export report → Email → Reset transactions → Preserve customers
+                    </p>
+                    
+                    <div id="automation-info">
+                        <p><strong>Status:</strong> <span style="color: #f59e0b;">Manual Setup Required</span></p>
+                        <p style="font-size: 0.875rem; color: #6b7280; margin-top: 0.5rem;">
+                            Requires Firebase Cloud Functions or external service for full automation.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer"><div style="text-align: center; padding: 1rem 0px; border-top: 1px solid rgb(229, 231, 235);">
+                <button onclick="window.app.showSection(&#39;personal-budget&#39;)" style="background: none; border: none; color: #3b82f6; cursor: pointer; font-size: 0.875rem; text-decoration: underline;">
+                    💳 My Personal Finances
+                </button>
+            </div>
+        <div class="contact-grid">
+            <div class="contact-item">
+                <span>📞</span>
+                <span>76902592 / 79063690</span>
+            </div>
+            <div class="contact-item">
+                <span>✉️</span>
+                <span>mangaliso.s@gmail.com</span>
+            </div>
+            <div class="contact-item">
+                <span>💬</span>
+                <span>WhatsApp: 76670307</span>
+            </div>
+        </div>
+        <div class="copyright">
+            © 2025-2030 | 76902592 | Expenditure. Services powered by Inala - 76902592
+        </div>
+    </footer>
+
+    <!-- JavaScript Modules -->
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/config.js.download"></script>
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/firebase.js.download"></script>
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/storage.js.download"></script>
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/ui.js.download"></script>
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/sales.js.download"></script>
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/expenditure.js.download"></script>
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/creditors.js.download"></script>
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/reports.js.download"></script>
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/finances.js.download"></script> 
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/personal-budget.js.download"></script>
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/admin.js.download"></script>
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/auth.js.download"></script>
+    <script type="module" src="./INALA HOLDINGS - Business Management_files/app.js.download"></script>
+
+<div id="user-info" style="position: fixed; top: 1rem; right: 1rem; display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: white; border-radius: 8px; font-size: 0.875rem; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 8px; z-index: 1000; border: 1px solid rgb(229, 231, 235);">
+            <img src="./INALA HOLDINGS - Business Management_files/ACg8ocLgVy4dcHDp9dQ1YFqJ9DdOZuGZ2UdPDO4KeS0n1sPbL75TqiU=s96-c" alt="User" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid #e5e7eb;">
+            <div style="flex: 1; min-width: 120px;">
+                <div style="font-weight: 600; color: #1f2937; font-size: 0.875rem;">mangaliso sambo</div>
+                <div style="font-size: 0.7rem; color: #6b7280;">mangaliso.s@gmail.com</div>
+            </div>
+            <span style="background: #fbbf24; color: white; padding: 0.25rem 0.75rem; border-radius: 999px; font-weight: 600; font-size: 0.7rem; white-space: nowrap;">
+                👑 Admin
+            </span>
+            <button onclick="window.auth.logout()" style="background: #ef4444; color: white; border: none; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.75rem; white-space: nowrap;">
+                Logout
+            </button>
+        </div></body></html>

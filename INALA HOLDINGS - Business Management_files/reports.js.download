@@ -1,0 +1,1423 @@
+import { storage } from './storage.js';
+import { ui } from './ui.js';
+
+// Business categories configuration
+const BUSINESS_CATEGORIES = {
+    BEEF: {
+        name: 'Beef Products',
+        subcategories: ['beef', 'wors', 'offals', 'oxtail', 'head', 'hooves', 'other_beef']
+    },
+    PORK: {
+        name: 'Pork Products', 
+        subcategories: ['pork', 'bacon', 'sausage', 'other_pork']
+    },
+    CHICKEN: {
+        name: 'Chicken Products',
+        subcategories: ['chicken', 'wings', 'other_chicken']
+    },
+    OTHER: {
+        name: 'Other',
+        subcategories: []
+    }
+};
+
+class ReportsManager {
+    constructor() {
+        this.reportsDisplay = null;
+        this.selectedMonth = null;
+        this.selectedYear = null;
+        this.useBusinessCycle = false;
+        this.currentPaymentId = null;
+    }
+
+    // In-app notification system
+    showNotification(message, type = 'info') {
+        // Remove existing notifications
+        const existing = document.querySelectorAll('.app-notification');
+        existing.forEach(n => n.remove());
+
+        const colors = {
+            success: { bg: '#d1fae5', border: '#10b981', text: '#065f46', icon: '✅' },
+            error: { bg: '#fee2e2', border: '#ef4444', text: '#991b1b', icon: '❌' },
+            warning: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e', icon: '⚠️' },
+            info: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af', icon: 'ℹ️' }
+        };
+
+        const color = colors[type] || colors.info;
+
+        const notification = document.createElement('div');
+        notification.className = 'app-notification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${color.bg};
+            color: ${color.text};
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid ${color.border};
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            z-index: 10000;
+            max-width: 400px;
+            animation: slideIn 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 500;
+        `;
+
+        notification.innerHTML = `
+            <span style="font-size: 1.5rem;">${color.icon}</span>
+            <span style="flex: 1;">${message}</span>
+            <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: ${color.text}; opacity: 0.7; padding: 0; margin: 0; line-height: 1;">&times;</button>
+        `;
+
+        // Add animation styles if not already present
+        if (!document.getElementById('notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = `
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(400px);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+                @keyframes slideOut {
+                    from {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                    to {
+                        transform: translateX(400px);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(notification);
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
+    }
+
+    initialize() {
+        this.reportsDisplay = document.getElementById('reports-display');
+        this.useBusinessCycle = false;
+        
+        // Wait for DOM to be fully loaded
+        setTimeout(() => {
+            // Try the correct ID first (singular "credit")
+            let manageCreditsBtn = document.getElementById('manage-credit-btn') ||
+                                   document.getElementById('manage-credits-btn') || 
+                                   document.getElementById('manage-creditors-btn') ||
+                                   document.querySelector('[onclick*="showCreditManagement"]') ||
+                                   document.querySelector('[onclick*="creditors"]');
+            
+            // If still not found, search by text content
+            if (!manageCreditsBtn) {
+                const allButtons = document.querySelectorAll('button, div[onclick], a[onclick]');
+                allButtons.forEach(btn => {
+                    const text = btn.textContent.toLowerCase();
+                    if (text.includes('manage credits') || text.includes('manage creditors') || text.includes('manage credit')) {
+                        manageCreditsBtn = btn;
+                    }
+                });
+            }
+            
+            console.log('Manage Credits Button:', manageCreditsBtn);
+            
+            if (manageCreditsBtn) {
+                // Remove any existing onclick handlers
+                const oldOnClick = manageCreditsBtn.getAttribute('onclick');
+                if (oldOnClick) {
+                    manageCreditsBtn.removeAttribute('onclick');
+                }
+                manageCreditsBtn.onclick = null;
+                
+                manageCreditsBtn.style.cursor = 'pointer';
+                manageCreditsBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('✅ Manage Credits clicked!');
+                    this.showCreditManagement();
+                });
+                console.log('✅ Manage Credits button handler attached successfully');
+            } else {
+                console.error('❌ Manage Credits button not found! Please check the button ID in your HTML.');
+            }
+        }, 500);
+        
+        const creditorsReportBtn = document.getElementById('creditors-report-btn');
+        const allTransactionsBtn = document.getElementById('all-transactions-btn');
+        const collectionReportBtn = document.getElementById('collection-report-btn');
+        const monthComparisonBtn = document.getElementById('month-comparison-btn');
+        
+        if (creditorsReportBtn) {
+            creditorsReportBtn.addEventListener('click', () => this.generateCreditorsReport());
+        }
+        
+        if (allTransactionsBtn) {
+            allTransactionsBtn.addEventListener('click', () => this.generateAllTransactions());
+        }
+        
+        if (collectionReportBtn) {
+            collectionReportBtn.addEventListener('click', () => this.generateCollectionReport());
+        }
+
+        if (monthComparisonBtn) {
+            monthComparisonBtn.addEventListener('click', () => this.generateMonthComparison());
+        }
+
+        this.addMonthFilterUI();
+        this.getCurrentMonthData();
+    }
+
+    // Helper: Determine the period for a payment (uses assigned field or falls back to date)
+    getPaymentPeriod(payment) {
+        if (payment.applies_to_period && payment.applies_to_period.month && payment.applies_to_period.year) {
+            return payment.applies_to_period;
+        }
+        // Fallback to business month from date
+        return this.getBusinessMonth(payment.date);
+    }
+
+    getCurrentMonthData() {
+        const now = new Date();
+        const currentDay = now.getDate();
+        let currentMonth = now.getMonth() + 1;
+        let currentYear = now.getFullYear();
+        
+        // Only apply business cycle logic if the toggle is enabled
+        if (this.useBusinessCycle && currentDay < 5) {
+            currentMonth = currentMonth - 1;
+            if (currentMonth === 0) {
+                currentMonth = 12;
+                currentYear = currentYear - 1;
+            }
+        }
+        
+        this.selectedMonth = currentMonth;
+        this.selectedYear = currentYear;
+        this.updateFilterStatus();
+    }
+
+    getBusinessMonth(date) {
+        const d = new Date(date);
+        const day = d.getDate();
+        let month = d.getMonth() + 1;
+        let year = d.getFullYear();
+        
+        if (day < 5) {
+            month = month - 1;
+            if (month === 0) {
+                month = 12;
+                year = year - 1;
+            }
+        }
+        
+        return { month, year };
+    }
+
+    showCreditManagement() {
+        const creditorsContent = document.getElementById('creditors-content');
+        if (creditorsContent) {
+            this.reportsDisplay.innerHTML = '<div style="margin-bottom: 1rem;"><button onclick="window.app.reports.updateOverview(); window.app.reports.initialize();" class="btn btn-secondary">← Back to Reports</button></div>' + creditorsContent.innerHTML;
+            
+            setTimeout(() => {
+                if (window.app && window.app.creditors) {
+                    window.app.creditors.creditorsList = document.getElementById('creditors-list');
+                    window.app.creditors.searchInput = document.getElementById('creditor-search');
+                    window.app.creditors.filterSelect = document.getElementById('creditor-filter');
+                    
+                    const refreshBtn = document.getElementById('refresh-creditors-btn');
+                    if (refreshBtn) {
+                        refreshBtn.addEventListener('click', () => window.app.creditors.loadCreditorsData());
+                    }
+                    
+                    window.app.creditors.loadCreditorsData();
+                }
+            }, 100);
+        }
+    }
+
+    addMonthFilterUI() {
+        const reportsHeader = document.querySelector('.reports-header') || document.querySelector('#reports-display')?.parentElement;
+        
+        if (!reportsHeader) return;
+
+        const existingFilter = document.getElementById('month-filter');
+        if (existingFilter) return;
+
+        const filterHTML = `
+            <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight: 600; color: #374151;">Filter Period:</label>
+                    <select id="month-filter" class="form-select" style="width: 150px;">
+                        <option value="all">All Time</option>
+                        <option value="current" selected>Current Month</option>
+                        <option value="custom">Custom Month</option>
+                    </select>
+                    <input type="month" id="custom-month" class="form-input" style="width: 180px; display: none;">
+                    <button id="apply-filter-btn" class="btn btn-primary" style="display: none;">Apply</button>
+                    <button id="clear-filter-btn" class="btn btn-secondary" style="display: none;">Clear Filter</button>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-left: 1rem;">
+                        <input type="checkbox" id="business-cycle-toggle" style="width: auto;">
+                        <span style="font-size: 0.875rem; color: #374151;">Use Business Cycle (5th-4th)</span>
+                    </label>
+                    <span id="filter-status" style="color: #6b7280; font-size: 0.875rem;"></span>
+                </div>
+            </div>
+        `;
+
+        const filterContainer = document.createElement('div');
+        filterContainer.innerHTML = filterHTML;
+        reportsHeader.insertBefore(filterContainer.firstElementChild, reportsHeader.firstChild);
+
+        const checkbox = document.getElementById('business-cycle-toggle');
+        if (checkbox) {
+            checkbox.checked = false;
+            checkbox.addEventListener('change', (e) => {
+                this.useBusinessCycle = e.target.checked;
+                this.getCurrentMonthData();
+                this.updateFilterStatus();
+                this.updateOverview();
+            });
+        }
+
+        const monthFilter = document.getElementById('month-filter');
+        if (monthFilter) {
+            monthFilter.addEventListener('change', (e) => {
+                const customMonth = document.getElementById('custom-month');
+                const applyBtn = document.getElementById('apply-filter-btn');
+                const clearBtn = document.getElementById('clear-filter-btn');
+
+                if (e.target.value === 'custom') {
+                    customMonth.style.display = 'block';
+                    applyBtn.style.display = 'inline-block';
+                    clearBtn.style.display = 'inline-block';
+                } else {
+                    customMonth.style.display = 'none';
+                    applyBtn.style.display = 'none';
+                    clearBtn.style.display = 'inline-block';
+                    
+                    if (e.target.value === 'current') {
+                        this.getCurrentMonthData();
+                    } else {
+                        this.selectedMonth = null;
+                        this.selectedYear = null;
+                    }
+                    this.updateFilterStatus();
+                    this.updateOverview();
+                }
+            });
+        }
+
+        const applyFilterBtn = document.getElementById('apply-filter-btn');
+        if (applyFilterBtn) {
+            applyFilterBtn.addEventListener('click', () => {
+                const monthInput = document.getElementById('custom-month').value;
+                if (monthInput) {
+                    const [year, month] = monthInput.split('-');
+                    this.selectedYear = parseInt(year);
+                    this.selectedMonth = parseInt(month);
+                    this.updateFilterStatus();
+                    this.updateOverview();
+                }
+            });
+        }
+
+        const clearFilterBtn = document.getElementById('clear-filter-btn');
+        if (clearFilterBtn) {
+            clearFilterBtn.addEventListener('click', () => {
+                this.selectedMonth = null;
+                this.selectedYear = null;
+                document.getElementById('month-filter').value = 'all';
+                document.getElementById('custom-month').style.display = 'none';
+                document.getElementById('apply-filter-btn').style.display = 'none';
+                document.getElementById('clear-filter-btn').style.display = 'none';
+                this.updateFilterStatus();
+                this.updateOverview();
+            });
+        }
+
+        this.updateFilterStatus();
+    }
+
+    updateFilterStatus() {
+        const statusEl = document.getElementById('filter-status');
+        if (!statusEl) return;
+        
+        if (this.selectedMonth && this.selectedYear) {
+            const monthName = new Date(this.selectedYear, this.selectedMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            
+            if (this.useBusinessCycle) {
+                const startDay = 5;
+                const startDate = new Date(this.selectedYear, this.selectedMonth - 1, startDay);
+                
+                let endMonth = this.selectedMonth;
+                let endYear = this.selectedYear;
+                if (endMonth === 12) {
+                    endMonth = 1;
+                    endYear = endYear + 1;
+                } else {
+                    endMonth = endMonth + 1;
+                }
+                const endDate = new Date(endYear, endMonth - 1, 4);
+                
+                const formatDate = (date) => {
+                    return (date.getMonth() + 1) + '/' + date.getDate();
+                };
+                
+                statusEl.textContent = 'Showing: ' + monthName + ' (Business: ' + formatDate(startDate) + '-' + formatDate(endDate) + ')';
+            } else {
+                statusEl.textContent = 'Showing: ' + monthName + ' (Calendar Month)';
+            }
+            
+            statusEl.style.color = '#3b82f6';
+            statusEl.style.fontWeight = '600';
+        } else {
+            statusEl.textContent = 'Showing: All Time';
+            statusEl.style.color = '#6b7280';
+        }
+    }
+
+    // Updated: Use getPaymentPeriod for payments
+    filterDataByPeriod(data) {
+        if (!this.selectedMonth || !this.selectedYear) return data;
+
+        return data.filter(item => {
+            if (!item.date) return false;
+            
+            let itemMonth, itemYear;
+            if (item.type === 'payment') {
+                const period = this.getPaymentPeriod(item);
+                itemMonth = period.month;
+                itemYear = period.year;
+            } else if (this.useBusinessCycle) {
+                const businessMonth = this.getBusinessMonth(item.date);
+                itemMonth = businessMonth.month;
+                itemYear = businessMonth.year;
+            } else {
+                const itemDate = new Date(item.date);
+                itemMonth = itemDate.getMonth() + 1;
+                itemYear = itemDate.getFullYear();
+            }
+            
+            return itemMonth === this.selectedMonth && itemYear === this.selectedYear;
+        });
+    }
+
+    getDataByCategory(data) {
+        const categorized = {};
+        
+        Object.keys(BUSINESS_CATEGORIES).forEach(category => {
+            categorized[category] = [];
+        });
+        
+        const categoryMap = {
+            'COW': 'BEEF',
+            'BEEF': 'BEEF',
+            'WORS': 'BEEF',
+            'OFFALS': 'BEEF',
+            'OFFAL': 'BEEF',
+            'OXTAIL': 'BEEF',
+            'HEAD': 'BEEF',
+            'HOOVES': 'BEEF',
+            'HOOF': 'BEEF',
+            'FAT': 'BEEF',
+            'SPICES': 'BEEF',
+            'SPICE': 'BEEF',
+            'PIG': 'PORK',
+            'PORK': 'PORK',
+            'BACON': 'PORK',
+            'SAUSAGE': 'PORK',
+            'CHICKEN': 'CHICKEN',
+            'WINGS': 'CHICKEN',
+            'WING': 'CHICKEN',
+            'PACKAGING': 'OTHER',
+            'TRANSPORT': 'OTHER',
+            'TRANPORT': 'OTHER',
+            'FUEL': 'OTHER',
+            'OTHER': 'OTHER'
+        };
+        
+        data.forEach(item => {
+            let category = null;
+            
+            // Check category field
+            if (item.category) {
+                const catUpper = item.category.toUpperCase().trim();
+                category = categoryMap[catUpper] || null;
+            }
+            
+            // Check subcategory
+            if (!category && item.subcategory) {
+                const subcat = item.subcategory.toUpperCase().trim();
+                category = categoryMap[subcat] || null;
+            }
+            
+            // Check product field
+            if (!category && item.product) {
+                const productUpper = item.product.toUpperCase().trim();
+                for (const [keyword, cat] of Object.entries(categoryMap)) {
+                    if (productUpper.includes(keyword)) {
+                        category = cat;
+                        break;
+                    }
+                }
+            }
+            
+            // Check description
+            if (!category && item.description) {
+                const descUpper = item.description.toUpperCase().trim();
+                for (const [keyword, cat] of Object.entries(categoryMap)) {
+                    if (descUpper.includes(keyword)) {
+                        category = cat;
+                        break;
+                    }
+                }
+            }
+            
+            // Check items array
+            if (!category && item.items && Array.isArray(item.items) && item.items.length > 0) {
+                const firstItem = item.items[0];
+                if (firstItem.product || firstItem.name) {
+                    const itemName = (firstItem.product || firstItem.name).toUpperCase().trim();
+                    for (const [keyword, cat] of Object.entries(categoryMap)) {
+                        if (itemName.includes(keyword)) {
+                            category = cat;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Default to OTHER
+            if (!category) {
+                category = 'OTHER';
+            }
+            
+            categorized[category].push(item);
+        });
+        
+        return categorized;
+    }
+
+    getPeriodLabel() {
+        if (!this.selectedMonth || !this.selectedYear) return 'All Time';
+        const monthName = new Date(this.selectedYear, this.selectedMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
+        if (!this.useBusinessCycle) return monthName;
+        
+        const startDay = 5;
+        const startDate = new Date(this.selectedYear, this.selectedMonth - 1, startDay);
+        
+        let endMonth = this.selectedMonth;
+        let endYear = this.selectedYear;
+        if (endMonth === 12) {
+            endMonth = 1;
+            endYear = endYear + 1;
+        } else {
+            endMonth = endMonth + 1;
+        }
+        const endDate = new Date(endYear, endMonth - 1, 4);
+        
+        const formatDate = (date) => {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return months[date.getMonth()] + ' ' + date.getDate() + ', ' + date.getFullYear();
+        };
+        
+        return monthName + ' (Business Cycle: ' + formatDate(startDate) + ' - ' + formatDate(endDate) + ')';
+    }
+
+    async updateOverview() {
+        await storage.loadAllData();
+        
+        let sales = storage.getSales();
+        let expenses = storage.getExpenditures();
+
+        sales = this.filterDataByPeriod(sales);
+        expenses = this.filterDataByPeriod(expenses);
+        
+        const categorizedSales = this.getDataByCategory(sales);
+        const categorizedExpenses = this.getDataByCategory(expenses);
+        
+        const totalSales = sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+        const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+        const netProfit = totalSales - totalExpenses;
+        const totalTransactions = sales.length + expenses.length;
+        
+        const reportTotalSales = document.getElementById('report-total-sales');
+        const reportTotalExpenses = document.getElementById('report-total-expenses');
+        const reportNetProfit = document.getElementById('report-net-profit');
+        const reportTransactions = document.getElementById('report-transactions');
+        
+        if (reportTotalSales) reportTotalSales.textContent = ui.formatCurrency(totalSales);
+        if (reportTotalExpenses) reportTotalExpenses.textContent = ui.formatCurrency(totalExpenses);
+        if (reportNetProfit) reportNetProfit.textContent = ui.formatCurrency(netProfit);
+        if (reportTransactions) reportTransactions.textContent = totalTransactions;
+        
+        this.renderCategoryBreakdown(categorizedSales, categorizedExpenses);
+    }
+
+    renderCategoryBreakdown(categorizedSales, categorizedExpenses) {
+        let breakdownHTML = '<div class="content-card" style="margin-top: 2rem;">';
+        breakdownHTML += '<h4 style="margin-bottom: 1.5rem; color: #374151;">Business Category Performance - ' + this.getPeriodLabel() + '</h4>';
+        breakdownHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">';
+        
+        // Only show BEEF, PORK, CHICKEN (not OTHER)
+        ['BEEF', 'PORK', 'CHICKEN'].forEach(category => {
+            const categorySales = categorizedSales[category] || [];
+            const categoryExpenses = categorizedExpenses[category] || [];
+            
+            const salesTotal = categorySales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+            const expensesTotal = categoryExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+            const profit = salesTotal - expensesTotal;
+            const transactionCount = categorySales.length + categoryExpenses.length;
+            const profitMargin = salesTotal > 0 ? (profit / salesTotal) * 100 : 0;
+            
+            breakdownHTML += '<div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">';
+            breakdownHTML += '<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">';
+            breakdownHTML += '<h5 style="margin: 0; color: #374151; font-size: 1.1rem;">' + BUSINESS_CATEGORIES[category].name + '</h5>';
+            breakdownHTML += '<span style="background: ' + (profit >= 0 ? '#d1fae5' : '#fee2e2') + '; color: ' + (profit >= 0 ? '#065f46' : '#dc2626') + '; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600;">';
+            breakdownHTML += (profit >= 0 ? 'PROFITABLE' : 'LOSS');
+            breakdownHTML += '</span>';
+            breakdownHTML += '</div>';
+            breakdownHTML += '<div style="color: ' + (profit >= 0 ? '#10b981' : '#ef4444') + '; font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; text-align: center;">';
+            breakdownHTML += ui.formatCurrency(profit);
+            breakdownHTML += '</div>';
+            breakdownHTML += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem;">';
+            breakdownHTML += '<div style="text-align: center;">';
+            breakdownHTML += '<div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">SALES</div>';
+            breakdownHTML += '<div style="color: #10b981; font-weight: 600;">' + ui.formatCurrency(salesTotal) + '</div>';
+            breakdownHTML += '</div>';
+            breakdownHTML += '<div style="text-align: center;">';
+            breakdownHTML += '<div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">EXPENSES</div>';
+            breakdownHTML += '<div style="color: #ef4444; font-weight: 600;">' + ui.formatCurrency(expensesTotal) + '</div>';
+            breakdownHTML += '</div>';
+            breakdownHTML += '<div style="text-align: center;">';
+            breakdownHTML += '<div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">TRANSACTIONS</div>';
+            breakdownHTML += '<div style="color: #6b7280; font-weight: 600;">' + transactionCount + '</div>';
+            breakdownHTML += '</div>';
+            breakdownHTML += '<div style="text-align: center;">';
+            breakdownHTML += '<div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.25rem;">MARGIN</div>';
+            breakdownHTML += '<div style="color: ' + (profitMargin >= 0 ? '#10b981' : '#ef4444') + '; font-weight: 600;">' + profitMargin.toFixed(1) + '%</div>';
+            breakdownHTML += '</div>';
+            breakdownHTML += '</div>';
+            
+            if (categorySales.length > 0) {
+                breakdownHTML += '<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f3f4f6;">';
+                breakdownHTML += '<div style="color: #6b7280; font-size: 0.8rem; margin-bottom: 0.5rem;">Top Products:</div>';
+                breakdownHTML += '<div style="font-size: 0.75rem; color: #9ca3af;">' + this.getTopProducts(categorySales).slice(0, 3).join(', ') + '</div>';
+                breakdownHTML += '</div>';
+            }
+            
+            breakdownHTML += '</div>';
+        });
+        
+        breakdownHTML += '</div>' + this.renderCategorySummary(categorizedSales, categorizedExpenses) + '</div>';
+        
+        const existingBreakdown = document.getElementById('category-breakdown');
+        if (existingBreakdown) {
+            existingBreakdown.innerHTML = breakdownHTML;
+        } else {
+            const breakdownElement = document.createElement('div');
+            breakdownElement.id = 'category-breakdown';
+            breakdownElement.innerHTML = breakdownHTML;
+            if (this.reportsDisplay) {
+                this.reportsDisplay.appendChild(breakdownElement);
+            }
+        }
+    }
+
+    getTopProducts(sales) {
+        const productCount = {};
+        sales.forEach(sale => {
+            const product = sale.product || 'Unknown';
+            productCount[product] = (productCount[product] || 0) + (sale.quantity || 1);
+        });
+        
+        return Object.entries(productCount)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([product, count]) => product + ' (' + count + ')');
+    }
+
+    renderCategorySummary(categorizedSales, categorizedExpenses) {
+        let totalSalesAll = 0;
+        let totalExpensesAll = 0;
+        
+        Object.keys(BUSINESS_CATEGORIES).forEach(category => {
+            const sales = categorizedSales[category] || [];
+            const expenses = categorizedExpenses[category] || [];
+            totalSalesAll += sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+            totalExpensesAll += expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+        });
+        
+        const totalProfitAll = totalSalesAll - totalExpensesAll;
+        const profitMargin = totalSalesAll > 0 ? (totalProfitAll / totalSalesAll) * 100 : 0;
+        
+        let html = '<div style="margin-top: 2rem; padding: 1.5rem; background: #f8fafc; border-radius: 8px;">';
+        html += '<h5 style="margin: 0 0 1rem 0; color: #374151;">Overall Summary</h5>';
+        html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">';
+        html += '<div style="text-align: center;">';
+        html += '<div style="color: #6b7280; font-size: 0.875rem;">Total Sales</div>';
+        html += '<div style="color: #10b981; font-size: 1.25rem; font-weight: 700;">' + ui.formatCurrency(totalSalesAll) + '</div>';
+        html += '</div>';
+        html += '<div style="text-align: center;">';
+        html += '<div style="color: #6b7280; font-size: 0.875rem;">Total Expenses</div>';
+        html += '<div style="color: #ef4444; font-size: 1.25rem; font-weight: 700;">' + ui.formatCurrency(totalExpensesAll) + '</div>';
+        html += '</div>';
+        html += '<div style="text-align: center;">';
+        html += '<div style="color: #6b7280; font-size: 0.875rem;">Net Profit</div>';
+        html += '<div style="color: ' + (totalProfitAll >= 0 ? '#10b981' : '#ef4444') + '; font-size: 1.25rem; font-weight: 700;">' + ui.formatCurrency(totalProfitAll) + '</div>';
+        html += '</div>';
+        html += '<div style="text-align: center;">';
+        html += '<div style="color: #6b7280; font-size: 0.875rem;">Profit Margin</div>';
+        html += '<div style="color: ' + (totalProfitAll >= 0 ? '#10b981' : '#ef4444') + '; font-size: 1.25rem; font-weight: 700;">' + (totalSalesAll > 0 ? profitMargin.toFixed(1) + '%' : '0%') + '</div>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+        
+        return html;
+    }
+
+    generateCollectionReport() {
+        let payments = storage.getPayments();
+        
+        // Mark payments with type for filtering
+        payments = payments.map(p => ({ ...p, type: 'payment' }));
+        
+        // Apply period filtering (now uses assigned period for payments)
+        payments = this.filterDataByPeriod(payments);
+        
+        if (payments.length === 0) {
+            this.reportsDisplay.innerHTML = '<div class="content-card"><h3>Payment Collection Report - ' + this.getPeriodLabel() + '</h3><p style="text-align: center; color: #6b7280; padding: 2rem;">No payments recorded for this period</p></div>';
+            return;
+        }
+
+        const paymentReceivers = {};
+        payments.forEach(payment => {
+            // Ensure payment has an ID
+            if (!payment.id) {
+                payment.id = 'payment-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            }
+            
+            const receiverName = (payment.received_by || 'Unknown').trim();
+            if (!paymentReceivers[receiverName]) {
+                paymentReceivers[receiverName] = {
+                    totalReceived: 0,
+                    paymentCount: 0,
+                    customerBreakdown: {}
+                };
+            }
+            paymentReceivers[receiverName].totalReceived += payment.amount || 0;
+            paymentReceivers[receiverName].paymentCount += 1;
+            
+            const customerName = (payment.customer_name || 'Unknown').trim();
+            if (!paymentReceivers[receiverName].customerBreakdown[customerName]) {
+                paymentReceivers[receiverName].customerBreakdown[customerName] = {
+                    totalAmount: 0,
+                    payments: []
+                };
+            }
+            paymentReceivers[receiverName].customerBreakdown[customerName].totalAmount += payment.amount || 0;
+            paymentReceivers[receiverName].customerBreakdown[customerName].payments.push(payment);
+        });
+
+        const totalCollections = Object.values(paymentReceivers).reduce((sum, data) => sum + data.totalReceived, 0);
+        const sortedReceivers = Object.entries(paymentReceivers).sort((a, b) => b[1].totalReceived - a[1].totalReceived);
+        
+        const periodLabel = this.getPeriodLabel();
+
+        let reportHTML = '<style>.collector-dropdown { display: none; }.collector-dropdown.active { display: block; }</style>';
+        reportHTML += '<div class="content-card">';
+        reportHTML += '<h3>Payment Collection Summary - ' + periodLabel + '</h3>';
+        reportHTML += '<div style="background: #3b82f6; color: white; padding: 2rem; border-radius: 12px; margin: 1rem 0; text-align: center;">';
+        reportHTML += '<div style="font-size: 0.875rem; opacity: 0.9;">TOTAL REMITTANCE</div>';
+        reportHTML += '<div style="font-size: 3rem; font-weight: 700;">' + ui.formatCurrency(totalCollections) + '</div>';
+        reportHTML += '<div style="font-size: 0.875rem; opacity: 0.9;">' + sortedReceivers.length + ' Collector(s) • ' + payments.length + ' Payments</div>';
+        reportHTML += '</div>';
+
+        sortedReceivers.forEach((item, index) => {
+            const receiverName = item[0];
+            const data = item[1];
+            const dropdownId = 'collector-dropdown-' + index;
+            
+            reportHTML += '<div style="margin: 1rem 0; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden;">';
+            reportHTML += '<div onclick="document.getElementById(\'' + dropdownId + '\').classList.toggle(\'active\')" style="cursor: pointer; padding: 1.5rem; background: #f9fafb; display: flex; justify-content: space-between; align-items: center;">';
+            reportHTML += '<div>';
+            reportHTML += '<h4 style="margin: 0; font-size: 1.25rem;">' + receiverName + '</h4>';
+            reportHTML += '<div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">' + data.paymentCount + ' collections</div>';
+            reportHTML += '</div>';
+            reportHTML += '<div style="display: flex; align-items: center; gap: 1rem;">';
+            reportHTML += '<div style="font-size: 1.5rem; font-weight: 700; color: #3b82f6;">' + ui.formatCurrency(data.totalReceived) + '</div>';
+            reportHTML += '<span style="font-size: 1.5rem;">▼</span>';
+            reportHTML += '</div>';
+            reportHTML += '</div>';
+            reportHTML += '<div id="' + dropdownId + '" class="collector-dropdown" style="padding: 1.5rem; background: white;">';
+            
+            Object.entries(data.customerBreakdown).forEach((entry) => {
+                const customerName = entry[0];
+                const customerData = entry[1];
+                
+                reportHTML += '<div style="margin-bottom: 1rem; padding: 1rem; background: #f9fafb; border-radius: 4px; border-left: 4px solid #10b981;">';
+                reportHTML += '<div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">';
+                reportHTML += '<strong style="font-size: 1.1rem;">' + customerName + '</strong>';
+                reportHTML += '<span style="color: #10b981; font-weight: 700; font-size: 1.1rem;">' + ui.formatCurrency(customerData.totalAmount) + '</span>';
+                reportHTML += '</div>';
+                reportHTML += '<div style="font-size: 0.875rem; color: #6b7280;">' + customerData.payments.length + ' payment(s)</div>';
+                
+                // List individual payments with edit button
+                customerData.payments.forEach((payment) => {
+                    const period = this.getPaymentPeriod(payment);
+                    const periodStr = period ? new Date(period.year, period.month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Auto (from date)';
+                    reportHTML += '<div style="margin-top: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">';
+                    reportHTML += '<span>' + ui.formatCurrency(payment.amount) + ' on ' + new Date(payment.date).toLocaleDateString() + ' (' + periodStr + ')</span>';
+                    reportHTML += '<button onclick="window.app.reports.editPaymentPeriod(\'' + payment.id + '\')" class="btn btn-sm btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">Edit Period</button>';
+                    reportHTML += '</div>';
+                });
+                
+                reportHTML += '</div>';
+            });
+            
+            reportHTML += '</div>';
+            reportHTML += '</div>';
+        });
+
+        reportHTML += '</div>';
+
+        // Modal for editing payment period
+        reportHTML += `
+            <div id="edit-period-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+                <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 400px; width: 90%;">
+                    <h4>Edit Payment Period</h4>
+                    <p id="edit-period-desc">Update period for payment.</p>
+                    <input type="month" id="edit-period-input" class="form-input" style="width: 100%; margin-bottom: 1rem;">
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button id="cancel-edit-period" class="btn btn-secondary">Cancel</button>
+                        <button id="save-edit-period" class="btn btn-primary">Save</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        this.reportsDisplay.innerHTML = reportHTML;
+
+        // Add event listeners after the HTML is rendered
+        setTimeout(() => {
+            const cancelBtn = document.getElementById('cancel-edit-period');
+            const saveBtn = document.getElementById('save-edit-period');
+            
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => {
+                    document.getElementById('edit-period-modal').style.display = 'none';
+                });
+            }
+            
+            if (saveBtn) {
+                saveBtn.addEventListener('click', () => {
+                    const monthInput = document.getElementById('edit-period-input');
+                    if (monthInput && monthInput.value) {
+                        const [year, month] = monthInput.value.split('-').map(Number);
+                        if (this.currentPaymentId && year && month) {
+                            this.savePaymentPeriod(this.currentPaymentId, { month, year });
+                            this.generateCollectionReport(); // Refresh report
+                        }
+                    }
+                    const modal = document.getElementById('edit-period-modal');
+                    if (modal) modal.style.display = 'none';
+                });
+            }
+        }, 100);
+    }
+
+    // Edit handler for payment period
+    editPaymentPeriod(paymentId) {
+        const payments = storage.getPayments();
+        const payment = payments.find(p => p.id === paymentId);
+        
+        if (!payment) {
+            console.error('Payment not found:', paymentId);
+            this.showNotification('Payment not found!', 'error');
+            return;
+        }
+
+        const period = this.getPaymentPeriod(payment);
+        const defaultMonth = period ? period.year + '-' + String(period.month).padStart(2, '0') : '';
+
+        const descEl = document.getElementById('edit-period-desc');
+        const inputEl = document.getElementById('edit-period-input');
+        const modalEl = document.getElementById('edit-period-modal');
+        
+        if (descEl) {
+            descEl.textContent = 'Update period for payment of ' + ui.formatCurrency(payment.amount) + ' from ' + payment.customer_name + '.';
+        }
+        if (inputEl) {
+            inputEl.value = defaultMonth;
+        }
+        if (modalEl) {
+            modalEl.style.display = 'flex';
+        }
+
+        // Store the payment ID
+        this.currentPaymentId = paymentId;
+    }
+
+    // Save updated period to storage with fallback
+    savePaymentPeriod(paymentId, period) {
+        try {
+            const payments = storage.getPayments();
+            const paymentIndex = payments.findIndex(p => p.id === paymentId);
+            
+            if (paymentIndex !== -1) {
+                payments[paymentIndex].applies_to_period = period;
+                
+                // Try to use storage.savePayments if it exists, otherwise use localStorage directly
+                if (typeof storage.savePayments === 'function') {
+                    storage.savePayments(payments);
+                } else {
+                    // Fallback: save to localStorage directly
+                    localStorage.setItem('payments', JSON.stringify(payments));
+                    console.log('💾 Payments saved to localStorage (fallback)');
+                }
+                
+                console.log('✅ Payment period updated successfully!');
+                this.showNotification('Payment period updated successfully!', 'success');
+            } else {
+                console.error('❌ Payment not found!');
+                this.showNotification('Payment not found!', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving payment period:', error);
+            this.showNotification('Error updating payment period: ' + error.message, 'error');
+        }
+    }
+
+    generateCreditorsReport() {
+        let sales = storage.getSales();
+        let payments = storage.getPayments();
+        
+        sales = this.filterDataByPeriod(sales);
+        
+        const creditSales = sales.filter(sale => sale.payment === 'credit');
+        
+        if (creditSales.length === 0) {
+            this.reportsDisplay.innerHTML = '<div class="content-card"><h3>Creditors Report - ' + this.getPeriodLabel() + '</h3><p style="text-align: center; color: #6b7280; padding: 2rem;">No credit sales found for this period</p></div>';
+            return;
+        }
+
+        const customerSummary = {};
+        
+        creditSales.forEach(sale => {
+            const customerName = sale.customer_name || 'Unknown';
+            if (!customerSummary[customerName]) {
+                customerSummary[customerName] = {
+                    totalOwed: 0,
+                    totalPaid: 0,
+                    category: sale.category || 'OTHER'
+                };
+            }
+            customerSummary[customerName].totalOwed += sale.total || 0;
+        });
+
+        // Mark payments with type for filtering
+        payments = payments.map(p => ({ ...p, type: 'payment' }));
+        
+        // For balance, filter payments using the new logic
+        const filteredPayments = this.filterDataByPeriod(payments);
+        filteredPayments.forEach(payment => {
+            const customerName = payment.customer_name || 'Unknown';
+            if (customerSummary[customerName]) {
+                customerSummary[customerName].totalPaid += payment.amount || 0;
+            }
+        });
+
+        let totalOwed = 0;
+        let totalPaid = 0;
+        const customersWithDebt = [];
+        const customersPaidOff = [];
+
+        Object.entries(customerSummary).forEach((entry) => {
+            const name = entry[0];
+            const data = entry[1];
+            const balance = data.totalOwed - data.totalPaid;
+            totalOwed += data.totalOwed;
+            totalPaid += data.totalPaid;
+            
+            if (balance > 0) {
+                customersWithDebt.push({ name: name, totalOwed: data.totalOwed, totalPaid: data.totalPaid, category: data.category, balance: balance });
+            } else {
+                customersPaidOff.push({ name: name, totalOwed: data.totalOwed, totalPaid: data.totalPaid, category: data.category, balance: balance });
+            }
+        });
+
+        const currentOutstanding = totalOwed - totalPaid;
+
+        let reportHTML = '<div class="content-card">';
+        reportHTML += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">';
+        reportHTML += '<h3 style="margin: 0;">Creditors Summary Report - ' + this.getPeriodLabel() + '</h3>';
+        reportHTML += '<select id="creditors-filter" class="form-select" style="width: 200px;">';
+        reportHTML += '<option value="all">All Customers</option>';
+        reportHTML += '<option value="debt">With Debt Only</option>';
+        reportHTML += '<option value="paid">Paid Off Only</option>';
+        reportHTML += '</select>';
+        reportHTML += '</div>';
+        reportHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 2rem 0;">';
+        reportHTML += '<div style="background: #fee2e2; padding: 1.5rem; border-radius: 8px; text-align: center;">';
+        reportHTML += '<div style="font-size: 0.875rem; color: #991b1b;">Outstanding Debt</div>';
+        reportHTML += '<div style="font-size: 2rem; font-weight: 700; color: #dc2626;">' + ui.formatCurrency(currentOutstanding) + '</div>';
+        reportHTML += '</div>';
+        reportHTML += '<div style="background: #d1fae5; padding: 1.5rem; border-radius: 8px; text-align: center;">';
+        reportHTML += '<div style="font-size: 0.875rem; color: #065f46;">Total Paid</div>';
+        reportHTML += '<div style="font-size: 2rem; font-weight: 700; color: #10b981;">' + ui.formatCurrency(totalPaid) + '</div>';
+        reportHTML += '</div>';
+        reportHTML += '<div style="background: #fef3c7; padding: 1.5rem; border-radius: 8px; text-align: center;">';
+        reportHTML += '<div style="font-size: 0.875rem; color: #92400e;">Customers with Debt</div>';
+        reportHTML += '<div style="font-size: 2rem; font-weight: 700; color: #f59e0b;">' + customersWithDebt.length + '</div>';
+        reportHTML += '</div>';
+        reportHTML += '<div style="background: #e0e7ff; padding: 1.5rem; border-radius: 8px; text-align: center;">';
+        reportHTML += '<div style="font-size: 0.875rem; color: #3730a3;">By Category</div>';
+        reportHTML += '<div style="font-size: 1.5rem; font-weight: 700; color: #4f46e5;">' + this.getCreditorsByCategory(customersWithDebt) + '</div>';
+        reportHTML += '</div>';
+        reportHTML += '</div>';
+        reportHTML += '<div id="creditors-with-debt" style="margin-bottom: 2rem;">';
+        reportHTML += '<h4 style="color: #dc2626;">Customers with Outstanding Debt</h4>';
+        reportHTML += '<table style="width: 100%; border-collapse: collapse;">';
+        reportHTML += '<thead>';
+        reportHTML += '<tr style="background: #f9fafb;">';
+        reportHTML += '<th style="padding: 0.75rem; text-align: left;">Customer</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: left;">Category</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: right;">Total Owed</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: right;">Paid</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: right;">Balance</th>';
+        reportHTML += '</tr>';
+        reportHTML += '</thead>';
+        reportHTML += '<tbody>';
+
+        customersWithDebt.sort((a, b) => b.balance - a.balance).forEach((customer, index) => {
+            const bgColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
+            const categoryName = BUSINESS_CATEGORIES[customer.category] ? BUSINESS_CATEGORIES[customer.category].name : customer.category;
+            
+            reportHTML += '<tr style="background: ' + bgColor + ';" class="debt-row">';
+            reportHTML += '<td style="padding: 0.75rem; font-weight: 600;">' + customer.name + '</td>';
+            reportHTML += '<td style="padding: 0.75rem;">';
+            reportHTML += '<span style="background: #e0e7ff; color: #4f46e5; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">' + categoryName + '</span>';
+            reportHTML += '</td>';
+            reportHTML += '<td style="padding: 0.75rem; text-align: right;">' + ui.formatCurrency(customer.totalOwed) + '</td>';
+            reportHTML += '<td style="padding: 0.75rem; text-align: right; color: #10b981;">' + ui.formatCurrency(customer.totalPaid) + '</td>';
+            reportHTML += '<td style="padding: 0.75rem; text-align: right; font-weight: 700; color: #dc2626;">' + ui.formatCurrency(customer.balance) + '</td>';
+            reportHTML += '</tr>';
+        });
+
+        reportHTML += '</tbody>';
+        reportHTML += '</table>';
+        reportHTML += '</div>';
+        reportHTML += '<div id="creditors-paid-off" style="display: ' + (customersPaidOff.length > 0 ? 'block' : 'none') + ';">';
+        reportHTML += '<h4 style="color: #10b981;">Customers Paid in Full</h4>';
+        reportHTML += '<table style="width: 100%; border-collapse: collapse;">';
+        reportHTML += '<thead>';
+        reportHTML += '<tr style="background: #f9fafb;">';
+        reportHTML += '<th style="padding: 0.75rem; text-align: left;">Customer</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: left;">Category</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: right;">Total Credit</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: right;">Amount Paid</th>';
+        reportHTML += '</tr>';
+        reportHTML += '</thead>';
+        reportHTML += '<tbody>';
+
+        customersPaidOff.forEach((customer, index) => {
+            const bgColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
+            const categoryName = BUSINESS_CATEGORIES[customer.category] ? BUSINESS_CATEGORIES[customer.category].name : customer.category;
+            
+            reportHTML += '<tr style="background: ' + bgColor + ';" class="paid-row">';
+            reportHTML += '<td style="padding: 0.75rem; font-weight: 600;">' + customer.name + '</td>';
+            reportHTML += '<td style="padding: 0.75rem;">';
+            reportHTML += '<span style="background: #d1fae5; color: #065f46; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">' + categoryName + '</span>';
+            reportHTML += '</td>';
+            reportHTML += '<td style="padding: 0.75rem; text-align: right;">' + ui.formatCurrency(customer.totalOwed) + '</td>';
+            reportHTML += '<td style="padding: 0.75rem; text-align: right; color: #10b981;">' + ui.formatCurrency(customer.totalPaid) + '</td>';
+            reportHTML += '</tr>';
+        });
+
+        reportHTML += '</tbody>';
+        reportHTML += '</table>';
+        reportHTML += '</div>';
+        reportHTML += '</div>';
+
+        // Inline script for filter functionality
+        reportHTML += '<script>';
+        reportHTML += '(function() {';
+        reportHTML += 'const filter = document.getElementById("creditors-filter");';
+        reportHTML += 'if (filter) {';
+        reportHTML += 'filter.addEventListener("change", function() {';
+        reportHTML += 'const val = this.value;';
+        reportHTML += 'const debtSection = document.getElementById("creditors-with-debt");';
+        reportHTML += 'const paidSection = document.getElementById("creditors-paid-off");';
+        reportHTML += 'if (val === "all") {';
+        reportHTML += 'if (debtSection) debtSection.style.display = "block";';
+        reportHTML += 'if (paidSection) paidSection.style.display = "block";';
+        reportHTML += '} else if (val === "debt") {';
+        reportHTML += 'if (debtSection) debtSection.style.display = "block";';
+        reportHTML += 'if (paidSection) paidSection.style.display = "none";';
+        reportHTML += '} else if (val === "paid") {';
+        reportHTML += 'if (debtSection) debtSection.style.display = "none";';
+        reportHTML += 'if (paidSection) paidSection.style.display = "block";';
+        reportHTML += '}';
+        reportHTML += '});';
+        reportHTML += '}';
+        reportHTML += '})();';
+        reportHTML += '</script>';
+
+        this.reportsDisplay.innerHTML = reportHTML;
+    }
+
+    getCreditorsByCategory(customersWithDebt) {
+        const categoryCount = {};
+        customersWithDebt.forEach(customer => {
+            const category = customer.category || 'OTHER';
+            categoryCount[category] = (categoryCount[category] || 0) + 1;
+        });
+        
+        return Object.keys(categoryCount).length;
+    }
+
+    generateAllTransactions() {
+        let sales = storage.getSales();
+        let expenses = storage.getExpenditures();
+        
+        sales = this.filterDataByPeriod(sales);
+        expenses = this.filterDataByPeriod(expenses);
+        
+        const allTransactions = [];
+        sales.forEach(sale => allTransactions.push({ ...sale, type: 'sale' }));
+        expenses.forEach(expense => allTransactions.push({ ...expense, type: 'expenditure' }));
+        allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        if (allTransactions.length === 0) {
+            this.reportsDisplay.innerHTML = '<div class="content-card"><h3>All Transactions - ' + this.getPeriodLabel() + '</h3><p style="text-align: center; color: #6b7280; padding: 2rem;">No transactions found for this period</p></div>';
+            return;
+        }
+
+        let reportHTML = '<div class="content-card">';
+        reportHTML += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">';
+        reportHTML += '<h3 style="margin: 0;">All Transactions - ' + this.getPeriodLabel() + '</h3>';
+        reportHTML += '<select id="transaction-filter" class="form-select" style="width: 180px;">';
+        reportHTML += '<option value="all">All Transactions</option>';
+        reportHTML += '<option value="sales">Sales Only</option>';
+        reportHTML += '<option value="expenses">Expenses Only</option>';
+        reportHTML += '</select>';
+        reportHTML += '</div>';
+        reportHTML += '<table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">';
+        reportHTML += '<thead>';
+        reportHTML += '<tr style="background: #f9fafb;">';
+        reportHTML += '<th style="padding: 0.75rem; text-align: left;">Date</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: left;">Type</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: left;">Category</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: left;">Description</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: right;">Amount</th>';
+        reportHTML += '</tr>';
+        reportHTML += '</thead>';
+        reportHTML += '<tbody id="transactions-tbody">';
+
+        allTransactions.slice(0, 100).forEach((transaction, index) => {
+            const isSale = transaction.type === 'sale';
+            const amount = isSale ? (transaction.total || 0) : (transaction.amount || 0);
+            const description = isSale ? 
+                (transaction.product || 'N/A') + ' (' + (transaction.quantity || 0) + 'x)' : 
+                (transaction.category || transaction.description || 'N/A');
+            const bgColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
+            const rowClass = isSale ? 'sale-row' : 'expense-row';
+            const category = BUSINESS_CATEGORIES[transaction.category] ? BUSINESS_CATEGORIES[transaction.category].name : (transaction.category || 'Other');
+
+            reportHTML += '<tr style="background: ' + bgColor + ';" class="' + rowClass + '">';
+            reportHTML += '<td style="padding: 0.75rem;">' + (transaction.date || 'N/A') + '</td>';
+            reportHTML += '<td style="padding: 0.75rem;">';
+            reportHTML += '<span style="color: ' + (isSale ? '#10b981' : '#ef4444') + '; font-weight: 600;">' + (isSale ? 'Sale' : 'Expense') + '</span>';
+            reportHTML += '</td>';
+            reportHTML += '<td style="padding: 0.75rem;">';
+            reportHTML += '<span style="background: #e0e7ff; color: #4f46e5; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">' + category + '</span>';
+            reportHTML += '</td>';
+            reportHTML += '<td style="padding: 0.75rem;">' + description + '</td>';
+            reportHTML += '<td style="padding: 0.75rem; text-align: right; color: ' + (isSale ? '#10b981' : '#ef4444') + '; font-weight: 600;">';
+            reportHTML += (isSale ? '+' : '-') + ui.formatCurrency(amount);
+            reportHTML += '</td>';
+            reportHTML += '</tr>';
+        });
+
+        const totalSales = sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+        const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+
+        reportHTML += '</tbody>';
+        reportHTML += '</table>';
+        reportHTML += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem;">';
+        reportHTML += '<div style="padding: 1rem; background: #d1fae5; border-radius: 8px; text-align: center;">';
+        reportHTML += '<div style="color: #065f46; font-weight: 600;">Total Sales</div>';
+        reportHTML += '<div style="color: #10b981; font-size: 1.5rem; font-weight: 700;">' + ui.formatCurrency(totalSales) + '</div>';
+        reportHTML += '</div>';
+        reportHTML += '<div style="padding: 1rem; background: #fee2e2; border-radius: 8px; text-align: center;">';
+        reportHTML += '<div style="color: #991b1b; font-weight: 600;">Total Expenses</div>';
+        reportHTML += '<div style="color: #ef4444; font-size: 1.5rem; font-weight: 700;">' + ui.formatCurrency(totalExpenses) + '</div>';
+        reportHTML += '</div>';
+        reportHTML += '<div style="padding: 1rem; background: #dbeafe; border-radius: 8px; text-align: center;">';
+        reportHTML += '<div style="color: #1e40af; font-weight: 600;">Net Profit</div>';
+        reportHTML += '<div style="color: #3b82f6; font-size: 1.5rem; font-weight: 700;">' + ui.formatCurrency(totalSales - totalExpenses) + '</div>';
+        reportHTML += '</div>';
+        reportHTML += '</div>';
+        reportHTML += '</div>';
+
+        // Inline script for filter functionality
+        reportHTML += '<script>';
+        reportHTML += '(function() {';
+        reportHTML += 'const filter = document.getElementById("transaction-filter");';
+        reportHTML += 'if (filter) {';
+        reportHTML += 'filter.addEventListener("change", function() {';
+        reportHTML += 'const val = this.value;';
+        reportHTML += 'const saleRows = document.querySelectorAll(".sale-row");';
+        reportHTML += 'const expenseRows = document.querySelectorAll(".expense-row");';
+        reportHTML += 'if (val === "all") {';
+        reportHTML += 'saleRows.forEach(row => row.style.display = "");';
+        reportHTML += 'expenseRows.forEach(row => row.style.display = "");';
+        reportHTML += '} else if (val === "sales") {';
+        reportHTML += 'saleRows.forEach(row => row.style.display = "");';
+        reportHTML += 'expenseRows.forEach(row => row.style.display = "none");';
+        reportHTML += '} else if (val === "expenses") {';
+        reportHTML += 'saleRows.forEach(row => row.style.display = "none");';
+        reportHTML += 'expenseRows.forEach(row => row.style.display = "");';
+        reportHTML += '}';
+        reportHTML += '});';
+        reportHTML += '}';
+        reportHTML += '})();';
+        reportHTML += '</script>';
+
+        this.reportsDisplay.innerHTML = reportHTML;
+    }
+
+    generateMonthComparison() {
+        const sales = storage.getSales();
+        const expenses = storage.getExpenditures();
+
+        const monthlyData = {};
+
+        const allData = [];
+        sales.forEach(item => allData.push({ ...item, type: 'sale' }));
+        expenses.forEach(item => allData.push({ ...item, type: 'expenditure' }));
+        
+        allData.forEach(item => {
+            const businessMonth = this.getBusinessMonth(item.date);
+            const monthKey = businessMonth.year + '-' + String(businessMonth.month).padStart(2, '0');
+            const category = item.category || 'OTHER';
+            
+            if (!monthlyData[monthKey]) {
+                monthlyData[monthKey] = {
+                    total: { sales: 0, expenses: 0, salesCount: 0, expensesCount: 0 },
+                    categories: {}
+                };
+                
+                Object.keys(BUSINESS_CATEGORIES).forEach(cat => {
+                    monthlyData[monthKey].categories[cat] = { sales: 0, expenses: 0, salesCount: 0, expensesCount: 0 };
+                });
+            }
+
+            if (item.type === 'sale') {
+                monthlyData[monthKey].total.sales += item.total || 0;
+                monthlyData[monthKey].total.salesCount++;
+                if (monthlyData[monthKey].categories[category]) {
+                    monthlyData[monthKey].categories[category].sales += item.total || 0;
+                    monthlyData[monthKey].categories[category].salesCount++;
+                }
+            } else if (item.type === 'expenditure') {
+                monthlyData[monthKey].total.expenses += item.amount || 0;
+                monthlyData[monthKey].total.expensesCount++;
+                if (monthlyData[monthKey].categories[category]) {
+                    monthlyData[monthKey].categories[category].expenses += item.amount || 0;
+                    monthlyData[monthKey].categories[category].expensesCount++;
+                }
+            }
+        });
+
+        const sortedMonths = Object.keys(monthlyData).sort().reverse();
+
+        let reportHTML = '<div class="content-card">';
+        reportHTML += '<h3>Month-over-Month Performance</h3>';
+        reportHTML += '<div style="margin-bottom: 2rem;">';
+        reportHTML += '<select id="category-filter" class="form-select" style="width: 200px;">';
+        reportHTML += '<option value="all">All Categories</option>';
+
+        Object.keys(BUSINESS_CATEGORIES).forEach(cat => {
+            reportHTML += '<option value="' + cat + '">' + BUSINESS_CATEGORIES[cat].name + '</option>';
+        });
+
+        reportHTML += '</select>';
+        reportHTML += '</div>';
+        reportHTML += '<table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">';
+        reportHTML += '<thead>';
+        reportHTML += '<tr style="background: #f9fafb;">';
+        reportHTML += '<th style="padding: 0.75rem; text-align: left;">Month</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: right;">Sales</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: right;">Expenses</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: right;">Profit</th>';
+        reportHTML += '<th style="padding: 0.75rem; text-align: right;">Margin</th>';
+        reportHTML += '</tr>';
+        reportHTML += '</thead>';
+        reportHTML += '<tbody id="month-comparison-body">';
+
+        sortedMonths.forEach((monthKey, index) => {
+            const data = monthlyData[monthKey];
+            const profit = data.total.sales - data.total.expenses;
+            const profitMargin = data.total.sales > 0 ? (profit / data.total.sales) * 100 : 0;
+            const [year, month] = monthKey.split('-');
+            const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            const bgColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
+
+            reportHTML += '<tr style="background: ' + bgColor + ';" data-month="' + monthKey + '" class="month-row"';
+            
+            // Add category data attributes for filtering
+            Object.keys(BUSINESS_CATEGORIES).forEach(cat => {
+                const catData = data.categories[cat];
+                const catProfit = catData.sales - catData.expenses;
+                const catMargin = catData.sales > 0 ? (catProfit / catData.sales) * 100 : 0;
+                reportHTML += ' data-' + cat.toLowerCase() + '-sales="' + catData.sales + '"';
+                reportHTML += ' data-' + cat.toLowerCase() + '-expenses="' + catData.expenses + '"';
+                reportHTML += ' data-' + cat.toLowerCase() + '-profit="' + catProfit + '"';
+                reportHTML += ' data-' + cat.toLowerCase() + '-margin="' + catMargin.toFixed(1) + '"';
+                reportHTML += ' data-' + cat.toLowerCase() + '-salescount="' + catData.salesCount + '"';
+                reportHTML += ' data-' + cat.toLowerCase() + '-expensescount="' + catData.expensesCount + '"';
+            });
+            
+            reportHTML += '>';
+            reportHTML += '<td style="padding: 0.75rem; font-weight: 600;">' + monthName + '</td>';
+            reportHTML += '<td style="padding: 0.75rem; text-align: right;">';
+            reportHTML += '<div style="color: #10b981; font-weight: 600;" class="sales-cell" data-original="' + data.total.sales + '">' + ui.formatCurrency(data.total.sales) + '</div>';
+            reportHTML += '<div style="font-size: 0.75rem; color: #6b7280;" class="sales-count-cell">' + data.total.salesCount + ' transaction(s)</div>';
+            reportHTML += '</td>';
+            reportHTML += '<td style="padding: 0.75rem; text-align: right;">';
+            reportHTML += '<div style="color: #ef4444; font-weight: 600;" class="expenses-cell" data-original="' + data.total.expenses + '">' + ui.formatCurrency(data.total.expenses) + '</div>';
+            reportHTML += '<div style="font-size: 0.75rem; color: #6b7280;" class="expenses-count-cell">' + data.total.expensesCount + ' expense(s)</div>';
+            reportHTML += '</td>';
+            reportHTML += '<td style="padding: 0.75rem; text-align: right; font-weight: 700; color: ' + (profit >= 0 ? '#10b981' : '#ef4444') + ';" class="profit-cell">' + ui.formatCurrency(profit) + '</td>';
+            reportHTML += '<td style="padding: 0.75rem; text-align: right; font-weight: 600; color: ' + (profitMargin >= 0 ? '#10b981' : '#ef4444') + ';" class="margin-cell">' + profitMargin.toFixed(1) + '%</td>';
+            reportHTML += '</tr>';
+        });
+
+        const totalSales = sortedMonths.reduce((sum, key) => sum + monthlyData[key].total.sales, 0);
+        const totalExpenses = sortedMonths.reduce((sum, key) => sum + monthlyData[key].total.expenses, 0);
+        const avgMonthlySales = sortedMonths.length > 0 ? totalSales / sortedMonths.length : 0;
+        const avgMonthlyExpenses = sortedMonths.length > 0 ? totalExpenses / sortedMonths.length : 0;
+        const avgMonthlyProfit = avgMonthlySales - avgMonthlyExpenses;
+        const avgProfitMargin = avgMonthlySales > 0 ? (avgMonthlyProfit / avgMonthlySales) * 100 : 0;
+
+        reportHTML += '</tbody>';
+        reportHTML += '</table>';
+        reportHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 2rem;">';
+        reportHTML += '<div style="background: #d1fae5; padding: 1.5rem; border-radius: 12px; text-align: center;">';
+        reportHTML += '<div style="color: #065f46; font-size: 0.875rem; font-weight: 600;">Average Monthly Sales</div>';
+        reportHTML += '<div style="color: #10b981; font-size: 1.75rem; font-weight: 700;" id="avg-sales">' + ui.formatCurrency(avgMonthlySales) + '</div>';
+        reportHTML += '<div style="color: #065f46; font-size: 0.75rem; margin-top: 0.5rem;" id="month-count">Across ' + sortedMonths.length + ' month(s)</div>';
+        reportHTML += '</div>';
+        reportHTML += '<div style="background: #fee2e2; padding: 1.5rem; border-radius: 12px; text-align: center;">';
+        reportHTML += '<div style="color: #991b1b; font-size: 0.875rem; font-weight: 600;">Average Monthly Expenses</div>';
+        reportHTML += '<div style="color: #ef4444; font-size: 1.75rem; font-weight: 700;" id="avg-expenses">' + ui.formatCurrency(avgMonthlyExpenses) + '</div>';
+        reportHTML += '<div style="color: #991b1b; font-size: 0.75rem; margin-top: 0.5rem;">Across ' + sortedMonths.length + ' month(s)</div>';
+        reportHTML += '</div>';
+        reportHTML += '<div style="background: #dbeafe; padding: 1.5rem; border-radius: 12px; text-align: center;">';
+        reportHTML += '<div style="color: #1e40af; font-size: 0.875rem; font-weight: 600;">Average Monthly Profit</div>';
+        reportHTML += '<div style="color: #1e40af; font-size: 1.75rem; font-weight: 700;" id="avg-profit">' + ui.formatCurrency(avgMonthlyProfit) + '</div>';
+        reportHTML += '<div style="color: #1e40af; font-size: 0.75rem; margin-top: 0.5rem;">Across ' + sortedMonths.length + ' month(s)</div>';
+        reportHTML += '</div>';
+        reportHTML += '<div style="background: #fef3c7; padding: 1.5rem; border-radius: 12px; text-align: center;">';
+        reportHTML += '<div style="color: #92400e; font-size: 0.875rem; font-weight: 600;">Average Profit Margin</div>';
+        reportHTML += '<div style="color: #f59e0b; font-size: 1.75rem; font-weight: 700;" id="avg-margin">' + avgProfitMargin.toFixed(1) + '%</div>';
+        reportHTML += '<div style="color: #92400e; font-size: 0.75rem; margin-top: 0.5rem;">Across ' + sortedMonths.length + ' month(s)</div>';
+        reportHTML += '</div>';
+        reportHTML += '</div>';
+        reportHTML += '</div>';
+
+        // Inline script for category filter functionality
+        reportHTML += '<script>';
+        reportHTML += '(function() {';
+        reportHTML += 'const categoryFilter = document.getElementById("category-filter");';
+        reportHTML += 'if (categoryFilter) {';
+        reportHTML += 'categoryFilter.addEventListener("change", function() {';
+        reportHTML += 'const selectedCategory = this.value.toLowerCase();';
+        reportHTML += 'const rows = document.querySelectorAll(".month-row");';
+        reportHTML += 'let totalSalesFiltered = 0;';
+        reportHTML += 'let totalExpensesFiltered = 0;';
+        reportHTML += 'let visibleMonths = 0;';
+        reportHTML += 'rows.forEach(row => {';
+        reportHTML += 'if (selectedCategory === "all") {';
+        reportHTML += 'const salesCell = row.querySelector(".sales-cell");';
+        reportHTML += 'const expensesCell = row.querySelector(".expenses-cell");';
+        reportHTML += 'const profitCell = row.querySelector(".profit-cell");';
+        reportHTML += 'const marginCell = row.querySelector(".margin-cell");';
+        reportHTML += 'const salesCountCell = row.querySelector(".sales-count-cell");';
+        reportHTML += 'const expensesCountCell = row.querySelector(".expenses-count-cell");';
+        reportHTML += 'const originalSales = parseFloat(salesCell.getAttribute("data-original"));';
+        reportHTML += 'const originalExpenses = parseFloat(expensesCell.getAttribute("data-original"));';
+        reportHTML += 'salesCell.textContent = "E" + originalSales.toFixed(2);';
+        reportHTML += 'expensesCell.textContent = "E" + originalExpenses.toFixed(2);';
+        reportHTML += 'const profit = originalSales - originalExpenses;';
+        reportHTML += 'const margin = originalSales > 0 ? (profit / originalSales) * 100 : 0;';
+        reportHTML += 'profitCell.textContent = "E" + profit.toFixed(2);';
+        reportHTML += 'marginCell.textContent = margin.toFixed(1) + "%";';
+        reportHTML += 'const origSalesCount = row.getAttribute("data-original-salescount") || salesCountCell.textContent;';
+        reportHTML += 'const origExpensesCount = row.getAttribute("data-original-expensescount") || expensesCountCell.textContent;';
+        reportHTML += 'if (!row.hasAttribute("data-original-salescount")) {';
+        reportHTML += 'row.setAttribute("data-original-salescount", salesCountCell.textContent);';
+        reportHTML += 'row.setAttribute("data-original-expensescount", expensesCountCell.textContent);';
+        reportHTML += '}';
+        reportHTML += 'salesCountCell.textContent = origSalesCount;';
+        reportHTML += 'expensesCountCell.textContent = origExpensesCount;';
+        reportHTML += 'totalSalesFiltered += originalSales;';
+        reportHTML += 'totalExpensesFiltered += originalExpenses;';
+        reportHTML += 'visibleMonths++;';
+        reportHTML += '} else {';
+        reportHTML += 'const catSales = parseFloat(row.getAttribute("data-" + selectedCategory + "-sales") || 0);';
+        reportHTML += 'const catExpenses = parseFloat(row.getAttribute("data-" + selectedCategory + "-expenses") || 0);';
+        reportHTML += 'const catProfit = parseFloat(row.getAttribute("data-" + selectedCategory + "-profit") || 0);';
+        reportHTML += 'const catMargin = row.getAttribute("data-" + selectedCategory + "-margin") || "0";';
+        reportHTML += 'const catSalesCount = row.getAttribute("data-" + selectedCategory + "-salescount") || "0";';
+        reportHTML += 'const catExpensesCount = row.getAttribute("data-" + selectedCategory + "-expensescount") || "0";';
+        reportHTML += 'row.querySelector(".sales-cell").textContent = "E" + catSales.toFixed(2);';
+        reportHTML += 'row.querySelector(".expenses-cell").textContent = "E" + catExpenses.toFixed(2);';
+        reportHTML += 'row.querySelector(".profit-cell").textContent = "E" + catProfit.toFixed(2);';
+        reportHTML += 'row.querySelector(".margin-cell").textContent = catMargin + "%";';
+        reportHTML += 'row.querySelector(".sales-count-cell").textContent = catSalesCount + " transaction(s)";';
+        reportHTML += 'row.querySelector(".expenses-count-cell").textContent = catExpensesCount + " expense(s)";';
+        reportHTML += 'totalSalesFiltered += catSales;';
+        reportHTML += 'totalExpensesFiltered += catExpenses;';
+        reportHTML += 'visibleMonths++;';
+        reportHTML += '}';
+        reportHTML += '});';
+        reportHTML += 'const avgSales = visibleMonths > 0 ? totalSalesFiltered / visibleMonths : 0;';
+        reportHTML += 'const avgExpenses = visibleMonths > 0 ? totalExpensesFiltered / visibleMonths : 0;';
+        reportHTML += 'const avgProfit = avgSales - avgExpenses;';
+        reportHTML += 'const avgMargin = avgSales > 0 ? (avgProfit / avgSales) * 100 : 0;';
+        reportHTML += 'const avgSalesEl = document.getElementById("avg-sales");';
+        reportHTML += 'const avgExpensesEl = document.getElementById("avg-expenses");';
+        reportHTML += 'const avgProfitEl = document.getElementById("avg-profit");';
+        reportHTML += 'const avgMarginEl = document.getElementById("avg-margin");';
+        reportHTML += 'if (avgSalesEl) avgSalesEl.textContent = "E" + avgSales.toFixed(2);';
+        reportHTML += 'if (avgExpensesEl) avgExpensesEl.textContent = "E" + avgExpenses.toFixed(2);';
+        reportHTML += 'if (avgProfitEl) avgProfitEl.textContent = "E" + avgProfit.toFixed(2);';
+        reportHTML += 'if (avgMarginEl) avgMarginEl.textContent = avgMargin.toFixed(1) + "%";';
+        reportHTML += '});';
+        reportHTML += '}';
+        reportHTML += '})();';
+        reportHTML += '</script>';
+
+        this.reportsDisplay.innerHTML = reportHTML;
+    }
+}
+
+export const reports = new ReportsManager();
