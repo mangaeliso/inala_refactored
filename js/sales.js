@@ -12,10 +12,18 @@ class SalesManager {
         this.paymentTypeSelect = null;
         this.customerNameInput = null;
         this.customerDropdown = null;
+        this.isSubmitting = false;
+        this.initialized = false;
+        this.lastSubmissionTime = 0;
+        this.submissionAttempts = new Set();
     }
 
-    // Initialize sales module
     initialize() {
+        if (this.initialized) {
+            console.warn('⚠️ SalesManager already initialized');
+            return;
+        }
+
         this.form = document.getElementById('sales-form');
         this.productSelect = document.getElementById('product-select');
         this.priceSelect = document.getElementById('price-select');
@@ -27,9 +35,11 @@ class SalesManager {
 
         this.renderProductOptions();
         this.attachEventListeners();
+        
+        this.initialized = true;
+        console.log('✅ SalesManager initialized');
     }
 
-    // Render product options
     renderProductOptions() {
         if (!this.productSelect) return;
 
@@ -43,10 +53,23 @@ class SalesManager {
         });
     }
 
-    // Attach event listeners
     attachEventListeners() {
         if (this.form) {
+            // Remove any existing listeners by cloning the form
+            const newForm = this.form.cloneNode(true);
+            this.form.parentNode.replaceChild(newForm, this.form);
+            this.form = newForm;
+            
             this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+            
+            // Re-get form elements
+            this.productSelect = document.getElementById('product-select');
+            this.priceSelect = document.getElementById('price-select');
+            this.quantityInput = document.getElementById('quantity-input');
+            this.totalAmountField = document.getElementById('total-amount');
+            this.paymentTypeSelect = document.getElementById('payment-type');
+            this.customerNameInput = document.getElementById('customer-name');
+            this.customerDropdown = document.getElementById('customer-dropdown');
         }
 
         if (this.productSelect) {
@@ -72,7 +95,6 @@ class SalesManager {
         }
     }
 
-    // Update price based on product selection
     updatePrice() {
         const selectedOption = this.productSelect.options[this.productSelect.selectedIndex];
         const price = selectedOption.dataset.price;
@@ -87,7 +109,6 @@ class SalesManager {
         this.calculateTotal();
     }
 
-    // Calculate total amount
     calculateTotal() {
         const quantity = parseFloat(this.quantityInput.value) || 0;
         const price = parseFloat(this.priceSelect.value) || 0;
@@ -100,7 +121,6 @@ class SalesManager {
         }
     }
 
-    // Toggle credit customer field
     toggleCreditField() {
         const creditGroup = document.getElementById('credit-customer-group');
         const isCredit = this.paymentTypeSelect.value === 'credit';
@@ -117,12 +137,14 @@ class SalesManager {
         }
     }
 
-    // Load customers for autocomplete
     async loadCustomers() {
-        await storage.loadAllData();
+        try {
+            await storage.loadAllData();
+        } catch (error) {
+            console.error('Error loading customers:', error);
+        }
     }
 
-    // Search customers with autocomplete
     searchCustomers() {
         const searchTerm = this.customerNameInput.value.toLowerCase().trim();
 
@@ -138,7 +160,6 @@ class SalesManager {
 
         let dropdownHTML = '';
 
-        // Show existing customers
         filteredCustomers.slice(0, 5).forEach(customer => {
             dropdownHTML += `
                 <div class="customer-option existing-customer" data-customer-id="${customer.id}" data-customer-name="${customer.name}">
@@ -148,7 +169,6 @@ class SalesManager {
             `;
         });
 
-        // Show "Add new" option if no exact match
         const exactMatch = customers.some(customer =>
             customer.name.toLowerCase() === searchTerm
         );
@@ -164,7 +184,6 @@ class SalesManager {
         this.customerDropdown.innerHTML = dropdownHTML;
         this.showDropdown();
 
-        // Add click listeners to options
         this.customerDropdown.querySelectorAll('.customer-option').forEach(option => {
             option.addEventListener('mousedown', (e) => {
                 e.preventDefault();
@@ -175,21 +194,18 @@ class SalesManager {
         });
     }
 
-    // Select customer from dropdown
     selectCustomer(name, id) {
         this.customerNameInput.value = name;
         this.customerNameInput.dataset.customerId = id;
         this.hideDropdown();
     }
 
-    // Show dropdown
     showDropdown() {
         if (this.customerDropdown) {
             this.customerDropdown.classList.add('show');
         }
     }
 
-    // Hide dropdown
     hideDropdown() {
         setTimeout(() => {
             if (this.customerDropdown) {
@@ -198,82 +214,138 @@ class SalesManager {
         }, 200);
     }
 
-    // Handle form submission
     async handleSubmit(e) {
         e.preventDefault();
+        e.stopPropagation();
 
         const formData = new FormData(this.form);
-        const paymentType = formData.get('payment');
-        const customerName = this.customerNameInput.value.trim();
-        const customerId = this.customerNameInput.dataset.customerId;
+        const submissionId = this.createSubmissionId(formData);
+        
+        if (this.submissionAttempts.has(submissionId)) {
+            console.warn('⚠️ Identical form submission already in progress, blocking');
+            ui.showAlert('This sale is already being processed...', 'warning');
+            return;
+        }
 
-        const quantity = parseInt(formData.get('quantity'));
-        const price = parseFloat(formData.get('price'));
-        const total = quantity * price;
+        const now = Date.now();
+        if (this.isSubmitting || (now - this.lastSubmissionTime < 5000)) {
+            console.warn('⚠️ Form submission blocked - rate limiting');
+            ui.showAlert('Please wait before submitting another sale', 'warning');
+            return;
+        }
 
-        // Build the complete sale data object
-        const saleData = {
-            type: 'sale',
-            date: formData.get('date'),
-            product: formData.get('product'),
-            quantity: quantity,
-            price: price,
-            total: total,
-            payment: paymentType,
-            customer_name: customerName || '',
-            created_by: window.app.currentUser.email,
-            created_by_name: window.app.currentUser.displayName || window.app.currentUser.email,
-            created_at: new Date().toISOString()
-        };
+        this.isSubmitting = true;
+        this.lastSubmissionTime = now;
+        this.submissionAttempts.add(submissionId);
+        
+        console.log('🔒 Form submission locked with ID:', submissionId);
 
-        // Handle credit sales
-        if (paymentType === 'credit') {
-            if (!customerName) {
-                ui.showAlert('Please enter customer name for credit sales', 'error');
+        try {
+            const paymentType = formData.get('payment');
+            const customerName = this.customerNameInput.value.trim();
+            const customerId = this.customerNameInput.dataset.customerId;
+
+            const quantity = parseInt(formData.get('quantity'));
+            const price = parseFloat(formData.get('price'));
+            const total = quantity * price;
+
+            if (!formData.get('product') || !formData.get('price') || !quantity) {
+                ui.showAlert('Please fill in all required fields', 'error');
                 return;
             }
 
-            saleData.customer_id = customerId;
+            if (quantity <= 0) {
+                ui.showAlert('Please enter a valid quantity', 'error');
+                return;
+            }
 
-            // Add new customer if needed
-            if (customerId === 'new' || !customerId) {
-                const customers = storage.getCustomers();
-                const existingCustomer = customers.find(c =>
-                    c.name.toLowerCase() === customerName.toLowerCase()
-                );
+            const saleData = {
+                type: 'sale',
+                date: formData.get('date'),
+                product: formData.get('product'),
+                quantity: quantity,
+                price: price,
+                total: total,
+                payment: paymentType,
+                customer_name: customerName || '',
+                created_by: window.app.currentUser.email,
+                created_by_name: window.app.currentUser.displayName || window.app.currentUser.email,
+                created_at: new Date().toISOString()
+            };
 
-                if (!existingCustomer) {
-                    const newCustomer = {
-                        name: customerName,
-                        totalCredit: saleData.total,
-                        lastPurchase: saleData.date,
-                        salesCount: 1,
-                        created_by: window.app.currentUser.email,
-                        created_by_name: window.app.currentUser.displayName || window.app.currentUser.email,
-                        created_at: new Date().toISOString()
-                    };
-                    await storage.saveData('customers', newCustomer);
-                    ui.showAlert(`New customer "${customerName}" added to database!`);
+            if (paymentType === 'credit') {
+                if (!customerName) {
+                    ui.showAlert('Please enter customer name for credit sales', 'error');
+                    return;
+                }
+
+                saleData.customer_id = customerId;
+
+                if (customerId === 'new' || !customerId) {
+                    const customers = storage.getCustomers();
+                    const existingCustomer = customers.find(c =>
+                        c.name.toLowerCase() === customerName.toLowerCase()
+                    );
+
+                    if (!existingCustomer) {
+                        const newCustomer = {
+                            name: customerName,
+                            totalCredit: saleData.total,
+                            lastPurchase: saleData.date,
+                            salesCount: 1,
+                            created_by: window.app.currentUser.email,
+                            created_by_name: window.app.currentUser.displayName || window.app.currentUser.email,
+                            created_at: new Date().toISOString()
+                        };
+                        await storage.saveData('customers', newCustomer);
+                        ui.showAlert(`New customer "${customerName}" added to database!`);
+                    }
                 }
             }
-        }
 
-        // Save sale
-        try {
-            await storage.saveData('sales', saleData);
-            ui.showAlert(`${paymentType === 'credit' ? 'Credit sale' : 'Sale'} saved successfully!`);
-            this.form.reset();
-            ui.setTodayDate();
-
-            // Hide credit field
-            document.getElementById('credit-customer-group').style.display = 'none';
-            this.customerNameInput.required = false;
+            const result = await storage.saveData('sales', saleData);
+            
+            if (result !== null) {
+                ui.showAlert(`${paymentType === 'credit' ? 'Credit sale' : 'Sale'} saved successfully!`, 'success');
+                this.resetForm();
+            } else {
+                ui.showAlert('This sale appears to be a duplicate and was not saved', 'warning');
+            }
 
         } catch (error) {
+            console.error('❌ Error saving sale:', error);
             ui.showAlert('Error saving sale: ' + error.message, 'error');
+        } finally {
+            setTimeout(() => {
+                this.isSubmitting = false;
+                this.submissionAttempts.delete(submissionId);
+                console.log('🔓 Form submission unlocked');
+            }, 3000);
         }
+    }
+
+    createSubmissionId(formData) {
+        const product = formData.get('product');
+        const quantity = formData.get('quantity');
+        const price = formData.get('price');
+        const date = formData.get('date');
+        const customer = this.customerNameInput.value.trim();
+        
+        return `sale_${date}_${product}_${quantity}_${price}_${customer}_${Date.now()}`;
+    }
+
+    resetForm() {
+        this.form.reset();
+        ui.setTodayDate();
+        
+        document.getElementById('credit-customer-group').style.display = 'none';
+        this.customerNameInput.required = false;
+        this.customerNameInput.dataset.customerId = '';
+        this.hideDropdown();
+        
+        this.totalAmountField.value = 'R0.00';
     }
 }
 
-// Create and export singleton instance
-export const sales = new SalesManager();
+const sales = new SalesManager();
+export { sales };

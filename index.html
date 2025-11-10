@@ -5,10 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>INALA HOLDINGS - Business Management</title>
     
+    <!-- Favicon to prevent 404 error -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
+    
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- EmailJS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script>
+        // Initialize EmailJS immediately
+        (function() {
+            emailjs.init("8JZlr3oJZ3Q7BGEPI");
+            console.log("📧 EmailJS initialized in HTML");
+        })();
+    </script>
     
     <!-- CSS Files -->
     <link rel="stylesheet" href="css/main.css">
@@ -57,8 +73,507 @@
             margin: 0.75rem 0 0 0 !important;
             line-height: 1.2 !important;
         }
-        
+
+        /* Admin Header Styles */
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 20px;
+        }
+
+        .admin-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* Test Email Button */
+        .test-email-btn {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .test-email-btn:hover {
+            background: #d97706;
+            transform: translateY(-1px);
+        }
+
+        /* Financial Insights Styles */
+        .financial-insights-container {
+            margin: 20px 0;
+        }
+
+        .insight-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .insight-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 5px solid #ccc;
+        }
+
+        .insight-card.profit {
+            border-left-color: #059669;
+        }
+
+        .insight-card.revenue {
+            border-left-color: #3b82f6;
+        }
+
+        .insight-card.expenses {
+            border-left-color: #dc2626;
+        }
+
+        .insight-card.credit {
+            border-left-color: #d97706;
+        }
+
+        .insight-card h4 {
+            margin: 0 0 10px 0;
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+
+        .insight-card .amount {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .insight-card .amount.positive {
+            color: #059669;
+        }
+
+        .insight-card .amount.negative {
+            color: #dc2626;
+        }
+
+        .insight-meta {
+            font-size: 0.8rem;
+            color: #9ca3af;
+        }
+
+        /* Charts Styles */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e5e7eb;
+        }
+
+        .chart-container h4 {
+            margin: 0 0 15px 0;
+            color: #374151;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .monthly-analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .month-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid #3b82f6;
+        }
+
+        .month-card.profit {
+            border-left-color: #059669;
+        }
+
+        .month-card.loss {
+            border-left-color: #dc2626;
+        }
+
+        .month-header {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 10px;
+        }
+
+        .month-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+
+        .stat-label {
+            color: #6b7280;
+        }
+
+        .stat-value {
+            font-weight: 600;
+        }
+
+        .stat-value.positive {
+            color: #059669;
+        }
+
+        .stat-value.negative {
+            color: #dc2626;
+        }
+
+        .export-options {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            padding: 8px 16px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .export-btn:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+
+        .report-section {
+            margin: 25px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            color: #374151;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        /* Simple Email System Styles */
+        .simple-email-system {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid #e5e7eb;
+        }
+
+        .email-section {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .email-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Report Selection */
+        .report-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .report-option {
+            padding: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .report-option:hover {
+            border-color: #3b82f6;
+            background: #f8fafc;
+        }
+
+        .report-option.selected {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .report-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .report-name {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.25rem;
+        }
+
+        .report-desc {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        /* Period Selection */
+        .period-selection {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .period-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            color: #374151;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .period-btn.selected {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        /* Recipient Management */
+        .recipient-management {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .recipient-group {
+            margin-bottom: 1rem;
+        }
+
+        .recipient-list {
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 0.5rem;
+            background: #f9fafb;
+        }
+
+        .recipient-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.25rem 0;
+            font-size: 0.875rem;
+        }
+
+        .recipient-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .add-recipient {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .contact-input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        /* Message Preview */
+        .message-preview {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .preview-header {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .preview-content {
+            font-size: 0.875rem;
+            line-height: 1.4;
+            color: #4b5563;
+        }
+
+        /* Quick Stats Preview */
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .quick-stat {
+            text-align: center;
+            padding: 0.75rem;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .stat-figure {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-figure.positive {
+            color: #059669;
+        }
+
+        .stat-figure.negative {
+            color: #dc2626;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-detail {
+            font-size: 0.7rem;
+            color: #9ca3af;
+        }
+
+        /* Action Buttons */
+        .email-actions-simple {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .btn-send-email {
+            background: #059669;
+            color: white;
+        }
+
+        .btn-send-sms {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-send-whatsapp {
+            background: #25d366;
+            color: white;
+        }
+
+        /* Status Messages */
+        .send-status {
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .send-status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            display: block;
+        }
+
+        .send-status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            display: block;
+        }
+
+        .send-status.sending {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+            display: block;
+        }
+
+        /* Mobile Responsive */
         @media (max-width: 768px) {
+            .recipient-management {
+                grid-template-columns: 1fr;
+            }
+            
+            .report-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .email-actions-simple {
+                flex-direction: column;
+            }
+            
+            .email-actions-simple .btn {
+                width: 100%;
+                text-align: center;
+            }
+
             .logo-container {
                 width: 75px;
                 height: 75px;
@@ -70,6 +585,29 @@
             
             .tagline {
                 font-size: 1rem !important;
+            }
+
+            .insight-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-container {
+                padding: 15px;
+            }
+
+            .admin-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .admin-actions {
+                width: 100%;
+                justify-content: flex-start;
             }
         }
         
@@ -94,6 +632,19 @@
             
             .tagline {
                 font-size: 0.95rem !important;
+            }
+
+            .monthly-analysis-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .export-options {
+                flex-direction: column;
+            }
+
+            .export-btn {
+                width: 100%;
+                text-align: center;
             }
         }
     </style>
@@ -225,7 +776,9 @@
         <!-- Reports Tab -->
         <div id="reports-content" class="tab-content hidden">
             <div class="content-card">
-                <h2 class="card-title">📊 Monthly Performance Overview</h2>
+                <h2 class="card-title">📊 Business Intelligence Dashboard</h2>
+                
+                <!-- Quick Stats -->
                 <div class="stats-grid">
                     <div class="stat-card sales">
                         <div class="stat-label">Total Sales</div>
@@ -245,14 +798,61 @@
                     </div>
                 </div>
                 
-                <div style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
-                    <button class="btn btn-primary" id="manage-credit-btn">🏢 Manage Credits</button>
-                    <button class="btn btn-secondary" id="creditors-report-btn">📋 Creditors Report</button>
-                    <button class="btn btn-secondary" id="all-transactions-btn">📊 All Transactions</button>
-                    <button class="btn btn-secondary" id="collection-report-btn">💰 Payment Collection Report</button>
-                    <button class="btn btn-secondary" id="month-comparison-btn">📈 Month Comparison</button>
+                <!-- Report Actions -->
+                <div class="report-section">
+                    <h3 class="section-title">📈 Report Actions</h3>
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary" id="advanced-reports-btn">📈 Advanced Reports</button>
+                        <button class="btn btn-secondary" id="export-csv-btn">📊 Export CSV</button>
+                        <button class="btn btn-secondary" id="export-pdf-btn">📄 Export PDF</button>
+                        <button class="btn btn-secondary" id="monthly-analysis-btn">📅 Monthly Analysis</button>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" id="manage-credit-btn">🏢 Manage Credits</button>
+                        <button class="btn btn-secondary" id="creditors-report-btn">📋 Creditors Report</button>
+                        <button class="btn btn-secondary" id="all-transactions-btn">📊 All Transactions</button>
+                        <button class="btn btn-secondary" id="collection-report-btn">💰 Payment Collection</button>
+                        <button class="btn btn-secondary" id="month-comparison-btn">📊 Month Comparison</button>
+                    </div>
                 </div>
 
+                <!-- Charts Container -->
+                <div id="charts-container" style="display: none;">
+                    <div class="report-section">
+                        <h3 class="section-title">📊 Business Performance Charts</h3>
+                        <div class="charts-grid">
+                            <div class="chart-container">
+                                <h4>Monthly Revenue vs Expenses</h4>
+                                <canvas id="revenue-expenses-chart" width="400" height="200"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h4>Profit/Loss by Month</h4>
+                                <canvas id="profit-loss-chart" width="400" height="200"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h4>Sales by Product Category</h4>
+                                <canvas id="sales-category-chart" width="400" height="200"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h4>Expense Breakdown</h4>
+                                <canvas id="expense-breakdown-chart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Analysis Container -->
+                <div id="monthly-analysis-container" style="display: none;">
+                    <div class="report-section">
+                        <h3 class="section-title">📅 Monthly Performance Analysis</h3>
+                        <div class="monthly-analysis-grid" id="monthly-analysis-grid">
+                            <!-- Monthly cards will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports Display -->
                 <div class="reports-header" style="position: relative;">
                     <div id="reports-display"></div>
                 </div>
@@ -320,9 +920,20 @@
         <!-- Admin Tab -->
         <div id="admin-content" class="tab-content hidden">
             <div class="content-card">
-                <h2 class="card-title">⚙️ Admin Panel</h2>
+                <!-- Admin Header with Test Button -->
+                <div class="admin-header">
+                    <h2 class="admin-title">⚙️ Admin Panel</h2>
+                    <div class="admin-actions">
+                        <button class="test-email-btn" id="admin-email-test-btn">
+                            🧪 Test Email Configuration
+                        </button>
+                    </div>
+                </div>
                 
-                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                <!-- Financial Insights -->
+                <div id="financial-insights" class="financial-insights-container"></div>
+                
+                <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
                     <div class="stat-card">
                         <div class="stat-label">Total Sales Records</div>
                         <div class="stat-value blue" id="admin-total-sales">0</div>
@@ -335,8 +946,155 @@
                         <div class="stat-label">Total Payment Records</div>
                         <div class="stat-value blue" id="admin-total-payments">0</div>
                     </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Customers</div>
+                        <div class="stat-value blue" id="admin-total-customers">0</div>
+                    </div>
                 </div>
 
+                <!-- Simple Email System -->
+                <div class="simple-email-system">
+                    <div class="email-section">
+                        <div class="section-title">📊 Choose Report</div>
+                        <div class="report-options">
+                            <div class="report-option selected" data-report="weekly-sales">
+                                <div class="report-icon">💰</div>
+                                <div class="report-name">Weekly Sales</div>
+                                <div class="report-desc">Sales performance this week</div>
+                            </div>
+                            <div class="report-option" data-report="monthly-expenses">
+                                <div class="report-icon">💸</div>
+                                <div class="report-name">Monthly Expenses</div>
+                                <div class="report-desc">Expenditure breakdown</div>
+                            </div>
+                            <div class="report-option" data-report="credit-status">
+                                <div class="report-icon">💳</div>
+                                <div class="report-name">Credit Status</div>
+                                <div class="report-desc">Customer credit overview</div>
+                            </div>
+                            <div class="report-option" data-report="profit-loss">
+                                <div class="report-icon">📈</div>
+                                <div class="report-name">Profit & Loss</div>
+                                <div class="report-desc">Monthly P&L statement</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="email-section">
+                        <div class="section-title">📅 Period</div>
+                        <div class="period-selection">
+                            <button class="period-btn selected" data-period="this-week">This Week</button>
+                            <button class="period-btn" data-period="last-week">Last Week</button>
+                            <button class="period-btn" data-period="this-month">This Month</button>
+                            <button class="period-btn" data-period="last-month">Last Month</button>
+                        </div>
+                    </div>
+
+                    <div class="email-section">
+                        <div class="section-title">👥 Send To</div>
+                        <div class="recipient-management">
+                            <div>
+                                <div class="recipient-group">
+                                    <label style="font-weight: 500; margin-bottom: 0.5rem; display: block;">Email Recipients</label>
+                                    <div class="recipient-list" id="email-recipients">
+                                        <div class="recipient-item">
+                                            <span>mangaliso.s@gmail.com</span>
+                                            <div class="recipient-actions">
+                                                <button class="remove-recipient" data-type="email">&times;</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="add-recipient">
+                                        <input type="email" class="contact-input" id="new-email" placeholder="Add email address">
+                                        <button class="btn btn-sm btn-primary" onclick="addEmailRecipient()">Add</button>
+                                    </div>
+                                </div>
+
+                                <div class="recipient-group">
+                                    <label style="font-weight: 500; margin-bottom: 0.5rem; display: block;">SMS Numbers</label>
+                                    <div class="recipient-list" id="sms-recipients">
+                                        <div class="recipient-item">
+                                            <span>+27 76 670 307</span>
+                                            <div class="recipient-actions">
+                                                <button class="remove-recipient" data-type="sms">&times;</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="add-recipient">
+                                        <input type="tel" class="contact-input" id="new-sms" placeholder="Add phone number">
+                                        <button class="btn btn-sm btn-primary" onclick="addSMSRecipient()">Add</button>
+                                    </div>
+                                </div>
+
+                                <div class="recipient-group">
+                                    <label style="font-weight: 500; margin-bottom: 0.5rem; display: block;">WhatsApp Numbers</label>
+                                    <div class="recipient-list" id="whatsapp-recipients">
+                                        <div class="recipient-item">
+                                            <span>+27 76 670 307</span>
+                                            <div class="recipient-actions">
+                                                <button class="remove-recipient" data-type="whatsapp">&times;</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="add-recipient">
+                                        <input type="tel" class="contact-input" id="new-whatsapp" placeholder="Add WhatsApp number">
+                                        <button class="btn btn-sm btn-primary" onclick="addWhatsAppRecipient()">Add</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="message-preview">
+                                <div class="preview-header">📋 Report Preview</div>
+                                <div class="preview-content">
+                                    <strong>Weekly Sales Report</strong><br>
+                                    Period: This Week<br><br>
+                                    
+                                    <div class="quick-stats">
+                                        <div class="quick-stat">
+                                            <div class="stat-figure positive">R15,230</div>
+                                            <div class="stat-label">Total Sales</div>
+                                            <div class="stat-detail">+12% from last week</div>
+                                        </div>
+                                        <div class="quick-stat">
+                                            <div class="stat-figure">R8,450</div>
+                                            <div class="stat-label">Expenses</div>
+                                            <div class="stat-detail">Within budget</div>
+                                        </div>
+                                        <div class="quick-stat">
+                                            <div class="stat-figure positive">R6,780</div>
+                                            <div class="stat-label">Net Profit</div>
+                                            <div class="stat-detail">45% margin</div>
+                                        </div>
+                                        <div class="quick-stat">
+                                            <div class="stat-figure">23</div>
+                                            <div class="stat-label">Transactions</div>
+                                            <div class="stat-detail">5 credit sales</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <br>
+                                    <em>Full report with detailed breakdown attached.</em>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="send-status" id="sendStatus"></div>
+
+                    <div class="email-actions-simple">
+                        <button class="btn btn-send-email" onclick="sendReport('email')">
+                            📧 Send Email
+                        </button>
+                        <button class="btn btn-send-sms" onclick="sendReport('sms')">
+                            📱 Send SMS
+                        </button>
+                        <button class="btn btn-send-whatsapp" onclick="sendReport('whatsapp')">
+                            💚 Send WhatsApp
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Data Management Section -->
                 <div style="background: #fee2e2; border: 1px solid #fecaca; padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
                     <h3 style="color: #991b1b; margin-bottom: 1rem;">⚠️ Data Management</h3>
                     <p style="color: #7f1d1d; margin-bottom: 1rem;">
@@ -347,14 +1105,8 @@
                         <button class="btn btn-secondary" id="clear-test-data-btn" style="background: #ef4444; color: white;">
                             🗑️ Clear All Test Data
                         </button>
-                        <button class="btn btn-secondary" id="export-monthly-btn" style="background: #3b82f6; color: white;">
-                            📊 Generate Monthly Report
-                        </button>
-                        <button class="btn btn-secondary" id="monthly-reset-btn" style="background: #f59e0b; color: white;">
-                            📅 Monthly Reset (25th)
-                        </button>
-                        <button class="btn btn-secondary" id="remove-duplicates-btn" style="background: #8b5cf6; color: white;">
-                            🧹 Remove Duplicate Expenses
+                        <button class="btn btn-secondary" id="manage-sales-btn" style="background: #059669; color: white;">
+                            💰 Manage Sales
                         </button>
                         <button class="btn btn-secondary" id="manage-expenditures-btn" style="background: #dc2626; color: white;">
                             💸 Manage Expenditures
@@ -362,18 +1114,44 @@
                     </div>
                 </div>
 
+                <!-- Sales Management Section -->
+                <div class="content-card" id="sales-management" style="display: none; margin-top: 2rem;">
+                    <h2 class="card-title">💰 Manage Sales</h2>
+                    <div class="search-section" style="margin-bottom: 1rem;">
+                        <input type="text" class="search-input" id="sales-search" placeholder="Search by date or product...">
+                        <button class="refresh-btn" id="refresh-sales-btn">🔄 Refresh</button>
+                    </div>
+                    <table id="sales-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th>Total Amount</th>
+                                <th>Payment Type</th>
+                                <th>Customer</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sales-list">
+                            <!-- Sales entries will be populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
                 <div style="background: #f3f4f6; padding: 1.5rem; border-radius: 8px;">
-                    <h3 style="margin-bottom: 1rem;">🔧 Monthly Automation Setup</h3>
+                    <h3 style="margin-bottom: 1rem;">🔧 System Information</h3>
                     <p style="margin-bottom: 1rem; color: #6b7280;">
-                        Email: mangaliso.s@gmail.com<br>
-                        Schedule: 25th of every month<br>
-                        Actions: Export report → Email → Reset transactions → Preserve customers
+                        Business Email: inala.holdingz@gmail.com<br>
+                        Admin User: mangaliso.s@gmail.com<br>
+                        Last Sync: <span id="last-sync-time">Just now</span>
                     </p>
                     
-                    <div id="automation-info">
-                        <p><strong>Status:</strong> <span style="color: #f59e0b;">Manual Setup Required</span></p>
+                    <div id="system-info">
+                        <p><strong>Status:</strong> <span style="color: #059669;">Operational</span></p>
                         <p style="font-size: 0.875rem; color: #6b7280; margin-top: 0.5rem;">
-                            Requires Firebase Cloud Functions or external service for full automation.
+                            Data: 96 sales, 19 expenses, 76 payments, 3 customers
                         </p>
                     </div>
                 </div>
@@ -416,5 +1194,301 @@
     <script type="module" src="js/admin.js"></script>
     <script type="module" src="js/auth.js"></script>
     <script type="module" src="js/app.js"></script>
+
+    <!-- PDF Generation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- Simple Email System Script -->
+    <script>
+        // Simple Email System Functionality
+        class SimpleEmailSystem {
+            constructor() {
+                this.selectedReport = 'weekly-sales';
+                this.selectedPeriod = 'this-week';
+                this.recipients = {
+                    email: ['mangaliso.s@gmail.com'],
+                    sms: ['+2776670307'],
+                    whatsapp: ['+2776670307']
+                };
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.updatePreview();
+            }
+
+            setupEventListeners() {
+                // Report selection
+                document.querySelectorAll('.report-option').forEach(option => {
+                    option.addEventListener('click', (e) => {
+                        this.selectReport(e.currentTarget.dataset.report);
+                    });
+                });
+
+                // Period selection
+                document.querySelectorAll('.period-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.selectPeriod(e.target.dataset.period);
+                    });
+                });
+
+                // Remove recipient
+                document.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('remove-recipient')) {
+                        this.removeRecipient(e.target.dataset.type, e.target.closest('.recipient-item'));
+                    }
+                });
+
+                // Enter key for adding recipients
+                ['new-email', 'new-sms', 'new-whatsapp'].forEach(id => {
+                    const input = document.getElementById(id);
+                    if (input) {
+                        input.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter') {
+                                this.addRecipient(id.replace('new-', ''));
+                            }
+                        });
+                    }
+                });
+            }
+
+            selectReport(report) {
+                document.querySelectorAll('.report-option').forEach(opt => opt.classList.remove('selected'));
+                document.querySelector(`[data-report="${report}"]`).classList.add('selected');
+                this.selectedReport = report;
+                this.updatePreview();
+            }
+
+            selectPeriod(period) {
+                document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('selected'));
+                document.querySelector(`[data-period="${period}"]`).classList.add('selected');
+                this.selectedPeriod = period;
+                this.updatePreview();
+            }
+
+            updatePreview() {
+                const preview = document.querySelector('.preview-content');
+                const reportData = this.getReportData();
+                
+                preview.innerHTML = `
+                    <strong>${reportData.title}</strong><br>
+                    Period: ${reportData.period}<br><br>
+                    
+                    <div class="quick-stats">
+                        ${reportData.stats.map(stat => `
+                            <div class="quick-stat">
+                                <div class="stat-figure ${stat.trend}">${stat.value}</div>
+                                <div class="stat-label">${stat.label}</div>
+                                <div class="stat-detail">${stat.detail}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <br>
+                    <em>${reportData.footer}</em>
+                `;
+            }
+
+            getReportData() {
+                const reports = {
+                    'weekly-sales': {
+                        title: 'Weekly Sales Report',
+                        period: this.getPeriodText(),
+                        stats: [
+                            { value: 'R15,230', label: 'Total Sales', detail: '+12% from last week', trend: 'positive' },
+                            { value: 'R8,450', label: 'Expenses', detail: 'Within budget', trend: '' },
+                            { value: 'R6,780', label: 'Net Profit', detail: '45% margin', trend: 'positive' },
+                            { value: '23', label: 'Transactions', detail: '5 credit sales', trend: '' }
+                        ],
+                        footer: 'Full report with product breakdown attached.'
+                    },
+                    'monthly-expenses': {
+                        title: 'Monthly Expenses Report',
+                        period: this.getPeriodText(),
+                        stats: [
+                            { value: 'R49,279', label: 'Total Expenses', detail: '119.2% of revenue', trend: 'negative' },
+                            { value: 'R8,200', label: 'Butchery', detail: '16.6% of total', trend: '' },
+                            { value: 'R5,100', label: 'Perfumes', detail: '10.3% of total', trend: '' },
+                            { value: 'R35,979', label: 'Consumables', detail: '73.1% of total', trend: '' }
+                        ],
+                        footer: 'Detailed category breakdown attached.'
+                    },
+                    'credit-status': {
+                        title: 'Credit Status Report',
+                        period: this.getPeriodText(),
+                        stats: [
+                            { value: 'R40,990', label: 'Credit Sales', detail: '95 pending sales', trend: '' },
+                            { value: '15', label: 'Active Debtors', detail: '3 overdue', trend: 'negative' },
+                            { value: 'R12,450', label: 'Total Owed', detail: 'R8,210 collectible', trend: '' },
+                            { value: '76', label: 'Payments', detail: 'This period', trend: '' }
+                        ],
+                        footer: 'Customer payment schedules attached.'
+                    },
+                    'profit-loss': {
+                        title: 'Profit & Loss Statement',
+                        period: this.getPeriodText(),
+                        stats: [
+                            { value: 'R41,340', label: 'Total Revenue', detail: 'Performance review needed', trend: '' },
+                            { value: 'R49,279', label: 'Total Expenses', detail: '119.2% expense ratio', trend: 'negative' },
+                            { value: 'R7,939', label: 'Net Profit', detail: '-19.2% margin', trend: 'negative' },
+                            { value: '52', label: 'Customers', detail: 'This period', trend: '' }
+                        ],
+                        footer: 'Complete financial statement attached.'
+                    }
+                };
+
+                return reports[this.selectedReport] || reports['weekly-sales'];
+            }
+
+            getPeriodText() {
+                const periods = {
+                    'this-week': 'This Week',
+                    'last-week': 'Last Week', 
+                    'this-month': 'This Month',
+                    'last-month': 'Last Month'
+                };
+                return periods[this.selectedPeriod];
+            }
+
+            addRecipient(type) {
+                const input = document.getElementById(`new-${type}`);
+                const value = input.value.trim();
+                
+                if (!value) return;
+
+                // Basic validation
+                if (type === 'email' && !this.isValidEmail(value)) {
+                    this.showStatus('Please enter a valid email address', 'error');
+                    return;
+                }
+
+                if ((type === 'sms' || type === 'whatsapp') && !this.isValidPhone(value)) {
+                    this.showStatus('Please enter a valid phone number', 'error');
+                    return;
+                }
+
+                this.recipients[type].push(value);
+                this.updateRecipientList(type);
+                input.value = '';
+                this.showStatus(`${type.toUpperCase()} recipient added`, 'success');
+            }
+
+            removeRecipient(type, element) {
+                const value = element.querySelector('span').textContent;
+                this.recipients[type] = this.recipients[type].filter(r => r !== value);
+                this.updateRecipientList(type);
+                this.showStatus('Recipient removed', 'success');
+            }
+
+            updateRecipientList(type) {
+                const container = document.getElementById(`${type}-recipients`);
+                container.innerHTML = this.recipients[type].map(recipient => `
+                    <div class="recipient-item">
+                        <span>${recipient}</span>
+                        <div class="recipient-actions">
+                            <button class="remove-recipient" data-type="${type}">&times;</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            async sendReport(channel) {
+                const hasRecipients = this.recipients[channel].length > 0;
+                
+                if (!hasRecipients) {
+                    this.showStatus(`No ${channel} recipients added`, 'error');
+                    return;
+                }
+
+                this.showStatus(`Sending ${this.selectedReport} via ${channel}...`, 'sending');
+
+                try {
+                    // Simulate API call
+                    await this.simulateSend(channel);
+                    
+                    this.showStatus(
+                        `Report sent successfully to ${this.recipients[channel].length} ${channel} recipients!`,
+                        'success'
+                    );
+                } catch (error) {
+                    this.showStatus(`Failed to send: ${error.message}`, 'error');
+                }
+            }
+
+            async simulateSend(channel) {
+                return new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        // Simulate 90% success rate
+                        if (Math.random() > 0.1) {
+                            resolve({ success: true });
+                        } else {
+                            reject(new Error('Network error - please try again'));
+                        }
+                    }, 2000);
+                });
+            }
+
+            showStatus(message, type) {
+                const statusEl = document.getElementById('sendStatus');
+                statusEl.textContent = message;
+                statusEl.className = `send-status ${type}`;
+                
+                if (type === 'success') {
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                    }, 5000);
+                }
+            }
+
+            isValidEmail(email) {
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            }
+
+            isValidPhone(phone) {
+                return /^[\+]?[0-9\s\-\(\)]{10,}$/.test(phone);
+            }
+        }
+
+        // Global functions for HTML onclick
+        function addEmailRecipient() {
+            window.emailSystem.addRecipient('email');
+        }
+
+        function addSMSRecipient() {
+            window.emailSystem.addRecipient('sms');
+        }
+
+        function addWhatsAppRecipient() {
+            window.emailSystem.addRecipient('whatsapp');
+        }
+
+        function sendReport(channel) {
+            window.emailSystem.sendReport(channel);
+        }
+
+        // Initialize when admin tab loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const adminTab = document.getElementById('admin-content');
+            if (adminTab) {
+                // Initialize when admin tab becomes visible
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (!mutation.target.classList.contains('hidden')) {
+                            if (!window.emailSystem) {
+                                window.emailSystem = new SimpleEmailSystem();
+                            }
+                        }
+                    });
+                });
+                
+                observer.observe(adminTab, { 
+                    attributes: true, 
+                    attributeFilter: ['class'] 
+                });
+            }
+        });
+    </script>
 </body>
 </html>

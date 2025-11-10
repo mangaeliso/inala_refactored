@@ -203,12 +203,16 @@ class CreditorsManager {
 
             const allCreditSales = allSales.filter(sale => sale.payment_type === 'credit' || sale.payment === 'credit');
             
+            // Filter sales for current month only
             const monthlyCreditSales = this.filterByPeriod(allCreditSales, 'sale');
+            
+            // Filter payments for current month only
             const monthlyPayments = this.filterByPeriod(allPayments, 'payment');
 
             const creditSummary = {};
             const originalNames = {};
 
+            // Process credit sales for current month
             monthlyCreditSales.forEach(sale => {
                 const normKey = this.getNormalizedCustomerKey(sale);
                 const origName = sale.customer_name || sale.customer_id || 'Unknown Customer';
@@ -230,7 +234,7 @@ class CreditorsManager {
                 creditSummary[normKey].totalCredit += parseFloat(sale.total) || 0;
                 creditSummary[normKey].transactions.push(sale);
                 
-                const productInfo = `${sale.product || 'Unknown'} (${sale.quantity || 0}x R${sale.price || 0})`;
+                const productInfo = `${sale.product || 'Unknown'} (${sale.quantity || 0}x @ R${sale.price || 0})`;
                 creditSummary[normKey].items.push(productInfo);
                 
                 if (!creditSummary[normKey].lastPurchase || new Date(sale.date) > new Date(creditSummary[normKey].lastPurchase)) {
@@ -238,6 +242,7 @@ class CreditorsManager {
                 }
             });
 
+            // Process payments for current month only
             monthlyPayments.forEach(payment => {
                 const normKey = this.getNormalizedCustomerKey(payment);
                 const origName = payment.customer_name || payment.to_customer || payment.from_collector || 'Unknown Customer';
@@ -246,9 +251,13 @@ class CreditorsManager {
                 if (creditSummary[normKey]) {
                     creditSummary[normKey].totalPaid += parseFloat(payment.amount) || 0;
                     creditSummary[normKey].payments.push(payment);
+                } else {
+                    // Payment without sales in current period - could be from previous period
+                    console.log(`Payment found for ${origName} but no credit sales in current period`);
                 }
             });
 
+            // Calculate outstanding amounts
             Object.keys(creditSummary).forEach(normKey => {
                 const totalCredit = parseFloat(creditSummary[normKey].totalCredit) || 0;
                 const totalPaid = parseFloat(creditSummary[normKey].totalPaid) || 0;
@@ -327,7 +336,7 @@ class CreditorsManager {
 
     renderCreditorsList(customersWithDebt) {
         const periodName = this.getPeriodDisplayName();
-        let creditHTML = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">';
+        let creditHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(450px, 1fr)); gap: 1.5rem; padding: 1rem 0;">';
 
         Object.entries(customersWithDebt).forEach(([normKey, data]) => {
             const customerName = data.name;
@@ -338,32 +347,83 @@ class CreditorsManager {
             const isUrgent = outstanding > 500;
             const lastActivity = data.lastPurchase ? new Date(data.lastPurchase).toLocaleDateString() : 'N/A';
 
+            let purchaseHistory = '';
+            if (data.items && data.items.length > 0) {
+                purchaseHistory = `
+                    <div style="margin-top: 1rem; padding: 1rem; background: #f9fafb; border-radius: 6px; max-height: 200px; overflow-y: auto;">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; color: #374151; display: flex; justify-content: space-between;">
+                            <span>Purchase History</span>
+                            <span style="background: #3b82f6; color: white; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem;">${data.items.length} items</span>
+                        </div>
+                        <div style="font-size: 0.8125rem; color: #6b7280;">
+                            ${data.items.map((item, idx) => `
+                                <div style="padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb; display: flex; gap: 0.5rem;">
+                                    <span style="color: #9ca3af; min-width: 1.5rem;">${idx + 1}.</span>
+                                    <span>${item}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
             creditHTML += `
-                <div class="credit-card bg-white rounded-lg shadow-md p-6 border-l-4 ${isUrgent ? 'border-red-500' : 'border-blue-500'}" 
+                <div class="credit-card" style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.5rem; border-left: 4px solid ${isUrgent ? '#ef4444' : '#3b82f6'};" 
                      data-customer-name="${customerName.toLowerCase()}" 
                      data-outstanding="${outstanding}">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-2">${customerName}</h3>
-                    <div class="space-y-2 text-sm">
-                        <div><span class="font-medium">Period:</span> <span class="text-gray-600">${periodName}</span></div>
-                        <div><span class="font-medium">Credit Sales:</span> <span class="text-blue-600">R${totalCredit.toFixed(2)}</span></div>
-                        <div><span class="font-medium">Paid:</span> <span class="text-green-600">R${totalPaid.toFixed(2)}</span></div>
-                        <div><span class="font-medium">Outstanding:</span> <span class="text-red-600 font-bold text-lg">R${outstanding.toFixed(2)}</span></div>
-                        <div><span class="font-medium">Payment Progress:</span> <span class="text-${progressPercent >= 50 ? 'green' : progressPercent > 0 ? 'yellow' : 'red'}-600">${progressPercent}%</span></div>
-                        <div><span class="font-medium">Last activity:</span> ${lastActivity}</div>
-                        ${data.items && data.items.length > 0 ? `
-                            <div class="mt-2 p-2 bg-gray-50 rounded text-xs">
-                                <span class="font-medium">Recent:</span> ${data.items.slice(-2).join(', ')}
-                            </div>
-                        ` : ''}
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <h3 style="font-size: 1.25rem; font-weight: 700; color: #1f2937; margin: 0;">${customerName}</h3>
+                        ${isUrgent ? '<span style="background: #fee2e2; color: #991b1b; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">⚠️ URGENT</span>' : ''}
                     </div>
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        <button class="btn btn-sm btn-outline" 
+                    
+                    <div style="background: ${outstanding > 500 ? '#fef3c7' : '#dbeafe'}; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                        <div style="font-size: 0.875rem; color: ${outstanding > 500 ? '#92400e' : '#1e40af'}; margin-bottom: 0.25rem;">Outstanding Balance</div>
+                        <div style="font-size: 2rem; font-weight: 700; color: ${outstanding > 500 ? '#92400e' : '#1e40af'};">R${outstanding.toFixed(2)}</div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; font-size: 0.875rem;">
+                        <div>
+                            <span style="color: #6b7280; display: block; margin-bottom: 0.25rem;">Period</span>
+                            <span style="color: #1f2937; font-weight: 600;">${periodName}</span>
+                        </div>
+                        <div>
+                            <span style="color: #6b7280; display: block; margin-bottom: 0.25rem;">Last Purchase</span>
+                            <span style="color: #1f2937; font-weight: 600;">${lastActivity}</span>
+                        </div>
+                        <div>
+                            <span style="color: #6b7280; display: block; margin-bottom: 0.25rem;">Total Credit</span>
+                            <span style="color: #3b82f6; font-weight: 600;">R${totalCredit.toFixed(2)}</span>
+                        </div>
+                        <div>
+                            <span style="color: #6b7280; display: block; margin-bottom: 0.25rem;">Amount Paid</span>
+                            <span style="color: #10b981; font-weight: 600;">R${totalPaid.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                            <span style="color: #6b7280;">Payment Progress</span>
+                            <span style="color: ${progressPercent >= 50 ? '#10b981' : progressPercent > 0 ? '#f59e0b' : '#ef4444'}; font-weight: 600;">${progressPercent}%</span>
+                        </div>
+                        <div style="width: 100%; background: #e5e7eb; border-radius: 9999px; height: 8px; overflow: hidden;">
+                            <div style="width: ${progressPercent}%; background: ${progressPercent >= 50 ? '#10b981' : progressPercent > 0 ? '#f59e0b' : '#ef4444'}; height: 100%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                    
+                    ${purchaseHistory}
+                    
+                    <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                        <button style="flex: 1; padding: 0.75rem; background: white; border: 2px solid #3b82f6; color: #3b82f6; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.875rem; transition: all 0.2s;" 
+                                onmouseover="this.style.background='#eff6ff'"
+                                onmouseout="this.style.background='white'"
                                 onclick="window.app.creditors.openPaymentModal('${this.escapeString(customerName)}', ${outstanding}, 'partial')">
-                            Partial
+                            💵 Partial
                         </button>
-                        <button class="btn btn-sm btn-primary" 
+                        <button style="flex: 1; padding: 0.75rem; background: #3b82f6; border: 2px solid #3b82f6; color: white; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.875rem; transition: all 0.2s;" 
+                                onmouseover="this.style.background='#2563eb'"
+                                onmouseout="this.style.background='#3b82f6'"
                                 onclick="window.app.creditors.openPaymentModal('${this.escapeString(customerName)}', ${outstanding}, 'full')">
-                            Full Payment
+                            ✅ Full Payment
                         </button>
                     </div>
                 </div>
@@ -524,102 +584,186 @@ class CreditorsManager {
         }, 100);
     }
 
-    async savePayment() {
-        const amountEl = document.getElementById('payment-amount-input');
-        const methodEl = document.getElementById('payment-method-input');
-        const dateEl = document.getElementById('payment-date-input');
-        const receivedByEl = document.getElementById('payment-received-by-input');
-        const notesEl = document.getElementById('payment-notes-input');
-        const periodEl = document.getElementById('payment-period-input');
+// Replace your savePayment method in creditors.js with this improved version
 
-        if (!amountEl || !methodEl || !dateEl || !receivedByEl || !periodEl) {
-            this.showNotification('Error: Payment form elements not found', 'error');
-            return;
-        }
+async savePayment() {
+    const amountEl = document.getElementById('payment-amount-input');
+    const methodEl = document.getElementById('payment-method-input');
+    const dateEl = document.getElementById('payment-date-input');
+    const receivedByEl = document.getElementById('payment-received-by-input');
+    const notesEl = document.getElementById('payment-notes-input');
+    const periodEl = document.getElementById('payment-period-input');
 
-        if (!amountEl.value || !methodEl.value || !dateEl.value || !receivedByEl.value || !periodEl.value) {
-            this.showNotification('Please fill all required fields', 'warning');
-            return;
-        }
+    // Validation
+    if (!amountEl || !methodEl || !dateEl || !receivedByEl || !periodEl) {
+        this.showNotification('Error: Payment form elements not found', 'error');
+        return;
+    }
 
-        const paymentAmount = parseFloat(amountEl.value);
-        if (isNaN(paymentAmount) || paymentAmount <= 0) {
-            this.showNotification('Please enter a valid payment amount', 'error');
-            return;
-        }
+    if (!amountEl.value || !methodEl.value || !dateEl.value || !receivedByEl.value || !periodEl.value) {
+        this.showNotification('Please fill all required fields', 'warning');
+        return;
+    }
 
-        if (paymentAmount > this.currentOutstanding) {
-            this.showNotification(`Payment amount (R${paymentAmount.toFixed(2)}) cannot exceed outstanding balance (R${this.currentOutstanding.toFixed(2)})`, 'warning');
-            return;
-        }
+    const paymentAmount = parseFloat(amountEl.value);
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+        this.showNotification('Please enter a valid payment amount', 'error');
+        return;
+    }
 
-        const [year, month] = periodEl.value.split('-').map(Number);
+    if (paymentAmount > this.currentOutstanding) {
+        this.showNotification(
+            `Payment amount (R${paymentAmount.toFixed(2)}) cannot exceed outstanding balance (R${this.currentOutstanding.toFixed(2)})`, 
+            'warning'
+        );
+        return;
+    }
+
+    // Parse period
+    const [year, month] = periodEl.value.split('-').map(Number);
+    
+    // Create payment data
+    const paymentData = {
+        id: 'payment_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        customer_name: this.currentCustomer,
+        to_customer: this.currentCustomer, // Add this for better compatibility
+        amount: paymentAmount,
+        date: dateEl.value,
+        applies_to_period: { month, year },
+        type: 'payment',
+        payment_method: methodEl.value,
+        received_by: receivedByEl.value.trim(),
+        notes: (notesEl.value || '').trim(),
+        created_at: new Date().toISOString(),
+        status: 'completed',
+        created_by: 'system'
+    };
+
+    // Disable save button to prevent double-clicks
+    const saveButton = document.getElementById('save-payment-btn');
+    if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.textContent = '💾 Saving...';
+        saveButton.style.opacity = '0.6';
+    }
+
+    try {
+        console.log('💾 Saving payment:', paymentData);
         
-        const paymentData = {
-            id: 'payment_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-            customer_name: this.currentCustomer,
-            amount: paymentAmount,
-            date: dateEl.value,
-            applies_to_period: { month, year },
-            type: 'payment',
-            payment_method: methodEl.value,
-            received_by: receivedByEl.value.trim(),
-            notes: (notesEl.value || '').trim(),
-            created_at: new Date().toISOString(),
-            status: 'completed',
-            created_by: 'system'
-        };
-
-        try {
-            let payments = [];
+        // Step 1: Save to Firebase first (if available)
+        let firebaseSuccess = false;
+        if (typeof storage.savePaymentToFirebase === 'function') {
             try {
-                const paymentsData = localStorage.getItem('payments');
-                payments = paymentsData ? JSON.parse(paymentsData) : [];
-            } catch (parseError) {
-                console.error('Error parsing payments:', parseError);
-                payments = [];
+                console.log('☁️ Attempting Firebase save...');
+                firebaseSuccess = await storage.savePaymentToFirebase(paymentData);
+                console.log('☁️ Firebase save result:', firebaseSuccess);
+            } catch (firebaseError) {
+                console.error('❌ Firebase save error:', firebaseError);
             }
-            
-            payments.push(paymentData);
-            localStorage.setItem('payments', JSON.stringify(payments));
-            
-            if (typeof storage.savePayments === 'function') {
-                await storage.savePayments(payments);
-            }
+        } else {
+            console.warn('⚠️ Firebase save function not available');
+        }
 
-            let firebaseSuccess = false;
-            if (typeof storage.savePaymentToFirebase === 'function') {
+        // Step 2: Save to localStorage as backup
+        let payments = [];
+        try {
+            const paymentsData = localStorage.getItem('payments');
+            payments = paymentsData ? JSON.parse(paymentsData) : [];
+        } catch (parseError) {
+            console.error('❌ Error parsing payments:', parseError);
+            payments = [];
+        }
+        
+        payments.push(paymentData);
+        localStorage.setItem('payments', JSON.stringify(payments));
+        console.log('✅ Saved to localStorage');
+
+        // Step 3: Update storage module if available
+        if (typeof storage.savePayments === 'function') {
+            try {
+                await storage.savePayments(payments);
+                console.log('✅ Storage module updated');
+            } catch (storageError) {
+                console.error('❌ Storage module error:', storageError);
+            }
+        }
+
+        // Step 4: Clear cache to force reload
+        if (typeof storage.clearCache === 'function') {
+            storage.clearCache();
+            console.log('🗑️ Cache cleared');
+        }
+
+        // Step 5: Close modal
+        const modal = document.getElementById('payment-modal-custom');
+        if (modal) {
+            modal.remove();
+        }
+
+        // Step 6: Show success notification
+        let successMessage = `Payment of R${paymentAmount.toFixed(2)} recorded for ${this.currentCustomer}!`;
+        if (firebaseSuccess) {
+            successMessage += ' (Synced to Firebase ☁️)';
+            this.showNotification(successMessage, 'success');
+        } else {
+            successMessage += ' (Saved locally - will sync when online)';
+            this.showNotification(successMessage, 'warning');
+        }
+
+        // Step 7: Force reload the creditors data
+        this.isLoaded = false;
+        
+        // Wait a bit longer for Firebase to propagate
+        setTimeout(async () => {
+            console.log('🔄 Reloading creditors data...');
+            
+            // Force reload from Firebase if available
+            if (typeof storage.loadAllData === 'function') {
                 try {
-                    firebaseSuccess = await storage.savePaymentToFirebase(paymentData);
-                } catch (firebaseError) {
-                    console.error('Error saving to Firebase:', firebaseError);
+                    await storage.loadAllData(true); // Pass true to force refresh
+                } catch (loadError) {
+                    console.error('❌ Error reloading data:', loadError);
                 }
             }
-
-            if (typeof storage.clearCache === 'function') {
-                storage.clearCache();
-            }
-
-            const modal = document.getElementById('payment-modal-custom');
-            if (modal) {
-                modal.remove();
-            }
-
-            if (firebaseSuccess) {
-                this.showNotification(`Payment of R${paymentAmount.toFixed(2)} recorded for ${this.currentCustomer}! (Saved to Firebase)`, 'success');
-            } else {
-                this.showNotification(`Payment of R${paymentAmount.toFixed(2)} recorded for ${this.currentCustomer}! (Saved locally)`, 'success');
-            }
             
-            setTimeout(() => {
-                this.loadCreditorsData();
-            }, 1500);
-            
-        } catch (error) {
-            console.error('❌ Error saving payment:', error);
-            this.showNotification('Error saving payment: ' + error.message, 'error');
+            // Reload the display
+            await this.loadCreditorsData();
+            console.log('✅ Data reloaded');
+        }, firebaseSuccess ? 1000 : 500); // Wait longer for Firebase
+        
+    } catch (error) {
+        console.error('❌ Error saving payment:', error);
+        this.showNotification('Error saving payment: ' + error.message, 'error');
+        
+        // Re-enable save button on error
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = '💾 Save Payment';
+            saveButton.style.opacity = '1';
         }
     }
+}
+
+// ALSO ADD THIS METHOD to help debug Firebase connection
+async testFirebaseConnection() {
+    console.log('🔍 Testing Firebase connection...');
+    
+    if (typeof storage.savePaymentToFirebase === 'function') {
+        console.log('✅ Firebase save function exists');
+        
+        // Check if Firebase is initialized
+        if (storage.db || storage.firestore) {
+            console.log('✅ Firebase database reference exists');
+            return true;
+        } else {
+            console.warn('⚠️ Firebase database reference not found');
+            return false;
+        }
+    } else {
+        console.warn('⚠️ Firebase save function not available');
+        return false;
+    }
+}
 
     filterCreditors() {
         const searchTerm = (this.searchInput?.value || '').toLowerCase().trim();
@@ -661,6 +805,5 @@ class CreditorsManager {
     }
 }
 
-// ✅ CORRECT EXPORT - Create instance and export it
 const creditors = new CreditorsManager();
 export { creditors };

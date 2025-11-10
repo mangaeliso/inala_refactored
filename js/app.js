@@ -6,9 +6,11 @@ import { reports } from './reports.js';
 import { whatsapp } from './whatsapp-notifications.js';
 import { finances } from './finances.js';
 import { personalBudget } from './personal-budget.js';
-import { admin } from './admin.js';
+import { adminPanel as admin } from './admin.js';
 import { loanManager } from './loans.js';
-import { creditors } from './creditors.js'; // ✅ ADDED
+import { creditors } from './creditors.js';
+import { auditLogger } from './audit.js';
+import { auditViewer } from './audit-viewer.js';
 
 class App {
     constructor() {
@@ -21,20 +23,66 @@ class App {
         this.personalBudget = personalBudget;
         this.admin = admin;
         this.loanManager = loanManager;
-        this.creditors = creditors; // ✅ ADDED
+        this.creditors = creditors;
         this.ui = ui;
+        this.auditLogger = auditLogger;
+        this.auditViewer = auditViewer;
     }
 
     async init() {
         console.log('🚀 Initializing Inala Holdings Management System...');
         await authManager.initialize();
         console.log('✅ Authentication initialized');
+        
+        // Initialize audit logging
+        await this.initializeAuditLogging();
+        
+        await this.initialize(); // Add await here
     }
 
-    initialize() {
+    async initializeAuditLogging() {
+        try {
+            // Check if Firebase is available globally
+            if (typeof window.firebase === 'undefined') {
+                console.warn('⚠️ Firebase not available, skipping audit logging initialization');
+                return;
+            }
+            
+            // Get Firebase instances from window
+            const db = window.firebase.firestore();
+            const auth = window.firebase.auth();
+            
+            // Initialize audit logger
+            await auditLogger.initialize(db, auth);
+            
+            // Set current user if already logged in
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                auditLogger.setCurrentUser(currentUser);
+            }
+            
+            // Listen for auth state changes
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    auditLogger.setCurrentUser(user);
+                    console.log('🔍 Audit logging active for:', user.email);
+                }
+            });
+            
+            // Initialize viewer
+            auditViewer.initialize();
+            
+            console.log('✅ Audit logging system initialized');
+        } catch (error) {
+            console.error('⚠️ Audit logging initialization failed:', error);
+            // Don't block app initialization if audit fails
+        }
+    }
+
+    async initialize() { // Add async here
         this.currentUser = authManager.getCurrentUser();
-        console.log('✅ User authenticated:', this.currentUser.email);
-        
+        console.log('✅ User authenticated:', this.currentUser?.email);
+
         this.setupNavigation();
         this.setupFooterLinks();
         this.sales.initialize();
@@ -43,10 +91,10 @@ class App {
         this.whatsapp.initialize();
         this.finances.initialize();
         this.personalBudget.initialize();
-        this.admin.initialize();
+        await this.admin.init(); // This requires await
         this.loanManager.initialize();
-        this.creditors.initialize(); // ✅ ADDED
-        
+        this.creditors.initialize();
+
         this.showSection('sales');
         console.log('✅ Application initialized successfully');
     }
@@ -74,22 +122,7 @@ class App {
     }
 
     setupFooterLinks() {
-        const footer = document.querySelector('.footer');
-        if (footer) {
-            const footerLinks = document.createElement('div');
-            footerLinks.style.cssText = 'text-align: center; padding: 1rem 0; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;';
-            footerLinks.innerHTML = `
-                <button onclick="window.app.showSection('personal-budget')" 
-                        style="background: none; border: none; color: #3b82f6; cursor: pointer; font-size: 0.875rem; text-decoration: underline;">
-                    💳 My Personal Finances
-                </button>
-                <button onclick="window.app.showSection('loans')" 
-                        style="background: none; border: none; color: #10b981; cursor: pointer; font-size: 0.875rem; text-decoration: underline;">
-                    💵 Loans (Dev)
-                </button>
-            `;
-            footer.insertBefore(footerLinks, footer.firstChild);
-        }
+        // Footer links removed
     }
 
     showSection(sectionId) {
@@ -108,15 +141,15 @@ class App {
             'reports': () => this.reports.updateOverview(),
             'finances': () => this.finances.loadFinancesData(),
             'personal-budget': () => this.personalBudget.loadPersonalBudget(),
-            'admin': () => this.admin.loadAdminData(),
+            'admin': () => this.admin.loadAdminStats(), // FIXED: Changed from loadAdminData to loadAdminStats
             'loans': () => this.loanManager.initialize()
         };
-        
+
         if (sectionActions[sectionId]) sectionActions[sectionId]();
-        console.log(`🔍 Switched to ${sectionId} section`);
+        console.log(`📍 Switched to ${sectionId} section`);
     }
 }
 
 window.app = new App();
-window.app.init();
+window.app.init().catch(error => console.error('App initialization failed:', error));
 export { App };

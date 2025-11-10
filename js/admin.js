@@ -1,755 +1,562 @@
-import { storage } from './storage.js';
-import { ui } from './ui.js';
+// admin.js - Clean Email System with Auto Credit Alerts
+console.log('📧 Loading Email Admin System...');
 
-class AdminManager {
+class EmailAdminSystem {
     constructor() {
-        this.isAdminUnlocked = false;
-    }
-
-    // Initialize admin module
-    initialize() {
-        const clearTestDataBtn = document.getElementById('clear-test-data-btn');
-        const exportMonthlyBtn = document.getElementById('export-monthly-btn');
-        const monthlyResetBtn = document.getElementById('monthly-reset-btn');
-        const removeDuplicatesBtn = document.getElementById('remove-duplicates-btn');
-        const manageExpendituresBtn = document.getElementById('manage-expenditures-btn');
-
-        if (clearTestDataBtn) {
-            clearTestDataBtn.addEventListener('click', () => this.clearTestData());
+        // Prevent duplicate initialization
+        if (window.emailAdminInstance) {
+            console.warn('⚠️ EmailAdminSystem already exists');
+            return window.emailAdminInstance;
         }
 
-        if (exportMonthlyBtn) {
-            exportMonthlyBtn.addEventListener('click', () => this.exportMonthlyReport());
-        }
-
-        if (monthlyResetBtn) {
-            monthlyResetBtn.addEventListener('click', () => this.monthlyReset());
-        }
-
-        if (removeDuplicatesBtn) {
-            removeDuplicatesBtn.addEventListener('click', () => this.removeDuplicates());
-        }
-
-        if (manageExpendituresBtn) {
-            manageExpendituresBtn.addEventListener('click', () => this.manageExpenditures());
-        }
-
-        // Listen for admin shortcut (Ctrl+Shift+A)
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.shiftKey && e.key === 'A') {
-                this.unlockAdminPanel();
-            }
-        });
-    }
-
-    // Unlock admin panel
-    unlockAdminPanel() {
-        if (!this.isAdminUnlocked) {
-            ui.showAdminTab();
-            ui.showAlert('Admin panel unlocked! 🔓', 'success');
-            this.isAdminUnlocked = true;
-        }
-    }
-
-    // Load admin data and update stats
-    async loadAdminData() {
-        try {
-            await storage.loadAllData();
-            this.updateStats();
-        } catch (error) {
-            console.error('Error loading admin data:', error);
-            ui.showAlert('Error loading admin data: ' + error.message, 'error');
-        }
-    }
-
-    // Update admin stats
-    updateStats() {
-        const sales = storage.getSales();
-        const expenses = storage.getExpenditures();
-        const payments = storage.getPayments();
-
-        const salesEl = document.getElementById('admin-total-sales');
-        const expensesEl = document.getElementById('admin-total-expenses');
-        const paymentsEl = document.getElementById('admin-total-payments');
-
-        if (salesEl) salesEl.textContent = sales.length;
-        if (expensesEl) expensesEl.textContent = expenses.length;
-        if (paymentsEl) paymentsEl.textContent = payments.length;
-    }
-
-    // Clear all test data
-    async clearTestData() {
-        if (!ui.confirmAction('⚠️ WARNING: This will permanently delete ALL sales, expenditure, and payment records.\n\nCustomer data will be preserved.\n\nType "DELETE" to confirm:')) {
-            return;
-        }
-
-        const confirmation = ui.promptInput('Type "DELETE" to confirm data deletion:');
-        if (confirmation !== 'DELETE') {
-            ui.showAlert('Data deletion cancelled', 'error');
-            return;
-        }
-
-        try {
-            await storage.clearAllTransactions();
-            ui.showAlert('🗑️ Test data cleared successfully! Sales, expenses, and payments deleted, customers preserved.', 'success');
-            this.updateStats();
-
-        } catch (error) {
-            ui.showAlert('Error clearing data: ' + error.message, 'error');
-        }
-    }
-
-    // Export monthly report
-    async exportMonthlyReport() {
-        await storage.loadAllData();
-
-        const sales = storage.getSales();
-        const expenses = storage.getExpenditures();
-        const payments = storage.getPayments();
-
-        const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-        const totalSales = sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
-        const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
-        const totalPayments = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-        const netProfit = totalSales - totalExpenses;
-
-        const reportText = `
-INALA HOLDINGS - Monthly Report
-Generated: ${new Date().toLocaleString()}
-Period: ${currentMonth}
-
-=== FINANCIAL SUMMARY ===
-Total Sales: R${totalSales.toFixed(2)}
-Total Expenses: R${totalExpenses.toFixed(2)}
-Total Payments Received: R${totalPayments.toFixed(2)}
-Net Profit: R${netProfit.toFixed(2)}
-
-=== TRANSACTION SUMMARY ===
-Total Transactions: ${sales.length + expenses.length}
-Sales Transactions: ${sales.length}
-Expense Transactions: ${expenses.length}
-Payment Records: ${payments.length}
-Credit Sales: ${sales.filter(s => s.payment === 'credit').length}
-
-=== DETAILED TRANSACTIONS ===
-SALES:
-${sales.map(sale =>
-            `${sale.date} | ${sale.product} | Qty: ${sale.quantity} | R${sale.total} | ${sale.payment}${sale.customer_name ? ' | ' + sale.customer_name : ''}`
-        ).join('\n')}
-
-EXPENSES:
-${expenses.map(expense =>
-            `${expense.date} | ${expense.business_unit} | ${expense.category} | R${expense.amount} | ${expense.payment_method}`
-        ).join('\n')}
-
-PAYMENTS RECEIVED:
-${payments.map(payment =>
-            `${payment.date} | ${payment.customer_name} | R${payment.amount} | ${payment.payment_method} | Received by: ${payment.received_by}`
-        ).join('\n')}
-
-=== END REPORT ===
-        `;
-
-        const blob = new Blob([reportText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `INALA-HOLDINGS-Report-${currentMonth.replace(' ', '-')}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
-
-        ui.showAlert(`📊 Monthly report generated and downloaded! File: INALA-HOLDINGS-Report-${currentMonth.replace(' ', '-')}.txt`, 'success');
-    }
-
-    // Monthly reset
-    async monthlyReset() {
-        if (!ui.confirmAction('🗓️ MONTHLY RESET\n\nThis will:\n1. Generate monthly report\n2. Clear all transactions\n3. Preserve customer data\n4. Reset dashboard to zero\n\nProceed?')) {
-            return;
-        }
-
-        try {
-            // Export report first
-            await this.exportMonthlyReport();
-
-            // Wait a moment for download
-            setTimeout(async () => {
-                // Clear transactions
-                await storage.clearAllTransactions();
-
-                ui.showAlert('🗓️ Monthly reset complete! Data archived and cleared for new month.', 'success');
-                this.updateStats();
-            }, 1000);
-
-        } catch (error) {
-            ui.showAlert('Error during monthly reset: ' + error.message, 'error');
-        }
-    }
-
-    // NEW: Manage all expenditures with edit/delete capabilities
-    async manageExpenditures() {
-        try {
-            await storage.loadAllData();
-            const expenses = storage.getExpenditures() || [];
-            
-            if (expenses.length === 0) {
-                ui.showAlert('No expenditures found in the system.', 'info');
-                return;
-            }
-
-            this.showExpenditureManagementModal(expenses);
-            
-        } catch (error) {
-            console.error('Error loading expenditures:', error);
-            ui.showAlert('Error loading expenditures: ' + error.message, 'error');
-        }
-    }
-
-    // Show expenditure management modal
-    showExpenditureManagementModal(expenses) {
-        // Sort by date (newest first)
-        const sortedExpenses = [...expenses].sort((a, b) => {
-            return new Date(b.date) - new Date(a.date);
-        });
-
-        let modalHTML = `
-        <div id="expenditure-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 2rem;">
-            <div style="background: white; border-radius: 12px; max-width: 1400px; width: 95%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
-                <div style="padding: 1.5rem; border-bottom: 2px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white;">
-                    <div>
-                        <h2 style="margin: 0; font-size: 1.5rem; color: white;">💸 Expenditure Management</h2>
-                        <p style="margin: 0.5rem 0 0 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">View, edit, or delete expenditure entries</p>
-                    </div>
-                    <button onclick="document.getElementById('expenditure-modal').remove()" style="background: rgba(255,255,255,0.2); border: none; font-size: 1.5rem; cursor: pointer; color: white; padding: 0.5rem; border-radius: 6px; width: 40px; height: 40px;">&times;</button>
-                </div>
-                
-                <div style="padding: 1rem 1.5rem; background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
-                    <input type="text" id="expenditure-search" placeholder="🔍 Search by business unit, category, description, or amount..." style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;">
-                </div>
-                
-                <div id="expenditure-list" style="padding: 1.5rem; overflow-y: auto; flex: 1; background: #fafafa;">
-                    ${this.renderExpenditureList(sortedExpenses)}
-                </div>
-                
-                <div style="padding: 1rem 1.5rem; border-top: 2px solid #e5e7eb; display: flex; gap: 1rem; justify-content: space-between; align-items: center; background: #f9fafb;">
-                    <div style="color: #6b7280; font-size: 0.875rem;">
-                        <strong>${expenses.length}</strong> total expenditure(s) | <strong>R${expenses.reduce((sum, e) => sum + (e.amount || 0), 0).toFixed(2)}</strong> total amount
-                    </div>
-                    <button onclick="document.getElementById('expenditure-modal').remove()" style="padding: 0.75rem 1.5rem; border: 1px solid #d1d5db; background: white; color: #374151; border-radius: 6px; font-weight: 600; cursor: pointer;">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>`;
-
-        // Remove existing modal if any
-        const existingModal = document.getElementById('expenditure-modal');
-        if (existingModal) existingModal.remove();
-
-        // Add modal to page
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-        // Store expenses for manipulation
-        window.adminExpenditureData = [...expenses];
-
-        // Add search functionality
-        document.getElementById('expenditure-search').addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            const filtered = sortedExpenses.filter(exp => {
-                return (
-                    exp.business_unit?.toLowerCase().includes(searchTerm) ||
-                    exp.category?.toLowerCase().includes(searchTerm) ||
-                    exp.description?.toLowerCase().includes(searchTerm) ||
-                    exp.amount?.toString().includes(searchTerm) ||
-                    exp.date?.includes(searchTerm) ||
-                    exp.payment_method?.toLowerCase().includes(searchTerm)
-                );
-            });
-            document.getElementById('expenditure-list').innerHTML = this.renderExpenditureList(filtered);
-        });
-    }
-
-    // Render expenditure list
-    renderExpenditureList(expenses) {
-        if (expenses.length === 0) {
-            return '<div style="text-align: center; padding: 3rem; color: #9ca3af;">No expenditures match your search.</div>';
-        }
-
-        return expenses.map((expense, index) => `
-            <div id="expense-item-${index}" style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
-                <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
-                    <div style="flex: 1;">
-                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
-                            <span style="background: #fee2e2; color: #991b1b; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; font-weight: 600;">
-                                ${expense.business_unit || 'N/A'}
-                            </span>
-                            <span style="background: #fef3c7; color: #92400e; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; font-weight: 600;">
-                                ${expense.category || 'N/A'}
-                            </span>
-                            <span style="color: #6b7280; font-size: 0.875rem;">
-                                📅 ${expense.date}
-                            </span>
-                        </div>
-                        <div style="font-size: 1.25rem; font-weight: 700; color: #dc2626; margin-bottom: 0.5rem;">
-                            R${parseFloat(expense.amount || 0).toFixed(2)}
-                        </div>
-                        <div style="color: #4b5563; font-size: 0.875rem; margin-bottom: 0.25rem;">
-                            <strong>Payment:</strong> ${expense.payment_method || 'N/A'}
-                        </div>
-                        ${expense.description ? `
-                            <div style="color: #6b7280; font-size: 0.875rem; font-style: italic; margin-top: 0.5rem; padding-left: 0.5rem; border-left: 3px solid #e5e7eb;">
-                                ${expense.description}
-                            </div>
-                        ` : ''}
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                        <button onclick="window.admin.editExpenditure(${index})" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
-                            ✏️ Edit
-                        </button>
-                        <button onclick="window.admin.deleteExpenditure(${index})" style="padding: 0.5rem 1rem; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
-                            🗑️ Delete
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    // Edit expenditure
-    async editExpenditure(index) {
-        const expense = window.adminExpenditureData[index];
-        if (!expense) return;
-
-        const editModalHTML = `
-        <div id="edit-expense-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 11000; padding: 2rem;">
-            <div style="background: white; border-radius: 12px; max-width: 600px; width: 95%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
-                <div style="padding: 1.5rem; border-bottom: 2px solid #e5e7eb; background: #3b82f6; color: white;">
-                    <h2 style="margin: 0; font-size: 1.25rem;">✏️ Edit Expenditure</h2>
-                </div>
-                
-                <div style="padding: 1.5rem; overflow-y: auto; flex: 1;">
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">Date</label>
-                        <input type="date" id="edit-date" value="${expense.date}" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
-                    </div>
-                    
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">Business Unit</label>
-                        <input type="text" id="edit-business-unit" value="${expense.business_unit || ''}" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
-                    </div>
-                    
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">Category</label>
-                        <input type="text" id="edit-category" value="${expense.category || ''}" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
-                    </div>
-                    
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">Amount (R)</label>
-                        <input type="number" id="edit-amount" value="${expense.amount || 0}" step="0.01" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
-                    </div>
-                    
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">Payment Method</label>
-                        <input type="text" id="edit-payment-method" value="${expense.payment_method || ''}" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
-                    </div>
-                    
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">Description</label>
-                        <textarea id="edit-description" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; min-height: 80px; resize: vertical;">${expense.description || ''}</textarea>
-                    </div>
-                </div>
-                
-                <div style="padding: 1rem 1.5rem; border-top: 2px solid #e5e7eb; display: flex; gap: 1rem; justify-content: flex-end; background: #f9fafb;">
-                    <button onclick="document.getElementById('edit-expense-modal').remove()" style="padding: 0.75rem 1.5rem; border: 1px solid #d1d5db; background: white; color: #374151; border-radius: 6px; font-weight: 600; cursor: pointer;">
-                        Cancel
-                    </button>
-                    <button onclick="window.admin.saveEditedExpenditure(${index})" style="padding: 0.75rem 1.5rem; border: none; background: #3b82f6; color: white; border-radius: 6px; font-weight: 600; cursor: pointer;">
-                        💾 Save Changes
-                    </button>
-                </div>
-            </div>
-        </div>`;
-
-        document.body.insertAdjacentHTML('beforeend', editModalHTML);
-    }
-
-    // Save edited expenditure
-    async saveEditedExpenditure(index) {
-        try {
-            const updatedExpense = {
-                ...window.adminExpenditureData[index],
-                date: document.getElementById('edit-date').value,
-                business_unit: document.getElementById('edit-business-unit').value,
-                category: document.getElementById('edit-category').value,
-                amount: parseFloat(document.getElementById('edit-amount').value),
-                payment_method: document.getElementById('edit-payment-method').value,
-                description: document.getElementById('edit-description').value
-            };
-
-            // Update in array
-            window.adminExpenditureData[index] = updatedExpense;
-
-            // Save to storage using the correct method
-            await storage.saveToFirebase('expenditures', window.adminExpenditureData);
-
-            // Close edit modal
-            document.getElementById('edit-expense-modal').remove();
-
-            // Refresh the list
-            await storage.loadAllData();
-            const expenses = storage.getExpenditures();
-            document.getElementById('expenditure-list').innerHTML = this.renderExpenditureList(expenses);
-            window.adminExpenditureData = [...expenses];
-
-            ui.showAlert('✅ Expenditure updated successfully!', 'success');
-            this.updateStats();
-
-        } catch (error) {
-            console.error('Error saving expenditure:', error);
-            ui.showAlert('Error saving expenditure: ' + error.message, 'error');
-        }
-    }
-
-    // Delete expenditure
-    async deleteExpenditure(index) {
-        const expense = window.adminExpenditureData[index];
-        if (!expense) return;
-
-        if (!confirm(`⚠️ Are you sure you want to delete this expenditure?\n\nBusiness Unit: ${expense.business_unit}\nCategory: ${expense.category}\nAmount: R${expense.amount}\nDate: ${expense.date}\n\nThis action cannot be undone!`)) {
-            return;
-        }
-
-        try {
-            ui.showAlert('🔄 Deleting expenditure...', 'info');
-
-            // Get fresh data from storage to ensure we have the latest
-            await storage.loadAllData();
-            const allExpenses = storage.getExpenditures();
-            
-            // Find the exact expense to delete by matching all fields
-            const indexToDelete = allExpenses.findIndex(exp => 
-                exp.date === expense.date &&
-                exp.business_unit === expense.business_unit &&
-                exp.category === expense.category &&
-                parseFloat(exp.amount) === parseFloat(expense.amount) &&
-                exp.payment_method === expense.payment_method &&
-                (exp.description || '') === (expense.description || '')
-            );
-
-            if (indexToDelete === -1) {
-                ui.showAlert('❌ Could not find expenditure to delete. Please refresh and try again.', 'error');
-                return;
-            }
-
-            // Remove the item
-            allExpenses.splice(indexToDelete, 1);
-
-            // Save to Firebase and wait for confirmation
-            await storage.saveToFirebase('expenditures', allExpenses);
-            
-            // Wait a moment for Firebase to process
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Close the modal
-            const modal = document.getElementById('expenditure-modal');
-            if (modal) modal.remove();
-            
-            // Force reload from Firebase
-            await storage.loadAllData();
-            this.updateStats();
-
-            ui.showAlert('✅ Expenditure deleted successfully! Data refreshed.', 'success');
-
-        } catch (error) {
-            console.error('Error deleting expenditure:', error);
-            ui.showAlert('❌ Error deleting expenditure: ' + error.message, 'error');
-        }
-    }
-
-    // Show duplicate management interface
-    async removeDuplicates() {
-        try {
-            ui.showAlert('🔍 Scanning for duplicates in sales and expenditures...', 'info');
-            
-            await storage.loadAllData();
-            const sales = storage.getSales() || [];
-            const expenses = storage.getExpenditures() || [];
-            
-            // Find duplicate sales
-            const salesDuplicates = this.findDuplicates(sales, 'sale');
-            
-            // Find duplicate expenses
-            const expensesDuplicates = this.findDuplicates(expenses, 'expense');
-            
-            if (salesDuplicates.length === 0 && expensesDuplicates.length === 0) {
-                ui.showAlert('✅ No duplicates found! Your data is clean.', 'success');
-                return;
-            }
-
-            // Show duplicate management modal
-            this.showDuplicateManagementModal(salesDuplicates, expensesDuplicates, sales, expenses);
-            
-        } catch (error) {
-            console.error('Error scanning duplicates:', error);
-            ui.showAlert('Error scanning duplicates: ' + error.message, 'error');
-        }
-    }
-
-    // Find duplicates in a dataset
-    findDuplicates(items, type) {
-        const itemMap = new Map();
-        const duplicateGroups = [];
-
-        items.forEach((item, index) => {
-            let signature;
-            
-            if (type === 'sale') {
-                // Include customer name in signature to avoid false positives
-                signature = [
-                    item.date,
-                    item.product?.toLowerCase().trim(),
-                    parseFloat(item.quantity || 0),
-                    parseFloat(item.price || 0),
-                    parseFloat(item.total || 0),
-                    item.payment?.toLowerCase().trim(),
-                    item.customer_name?.toLowerCase().trim() || ''
-                ].join('|');
-            } else {
-                // For expenses, include payment method and description for better matching
-                signature = [
-                    item.date,
-                    item.business_unit?.toLowerCase().trim(),
-                    item.category?.toLowerCase().trim(),
-                    parseFloat(item.amount || 0).toFixed(2),
-                    item.payment_method?.toLowerCase().trim() || '',
-                    item.description?.toLowerCase().trim().substring(0, 50) || ''
-                ].join('|');
-            }
-
-            if (itemMap.has(signature)) {
-                const group = itemMap.get(signature);
-                group.duplicates.push({ ...item, index });
-            } else {
-                itemMap.set(signature, {
-                    original: { ...item, index },
-                    duplicates: [],
-                    signature
-                });
-            }
-        });
-
-        // Get only groups that have duplicates
-        itemMap.forEach(group => {
-            if (group.duplicates.length > 0) {
-                duplicateGroups.push(group);
-            }
-        });
-
-        return duplicateGroups;
-    }
-
-    // Show duplicate management modal
-    showDuplicateManagementModal(salesDuplicates, expensesDuplicates, allSales, allExpenses) {
-        const totalDuplicates = salesDuplicates.reduce((sum, g) => sum + g.duplicates.length, 0) +
-                               expensesDuplicates.reduce((sum, g) => sum + g.duplicates.length, 0);
-
-        let modalHTML = `
-        <div id="duplicate-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000; overflow-y: auto; padding: 2rem;">
-            <div style="background: white; border-radius: 12px; max-width: 1200px; width: 95%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
-                <div style="padding: 1.5rem; border-bottom: 2px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #f9fafb;">
-                    <div>
-                        <h2 style="margin: 0; font-size: 1.5rem; color: #111827;">🧹 Duplicate Management</h2>
-                        <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Found ${totalDuplicates} potential duplicates. Review and select items to delete.</p>
-                    </div>
-                    <button onclick="document.getElementById('duplicate-modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; padding: 0.5rem;">&times;</button>
-                </div>
-                
-                <div style="padding: 1.5rem; overflow-y: auto; flex: 1;">`;
-
-        // Sales Duplicates Section
-        if (salesDuplicates.length > 0) {
-            modalHTML += `
-                <div style="margin-bottom: 2rem;">
-                    <h3 style="color: #059669; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span>💰</span> Sales Duplicates (${salesDuplicates.length} groups)
-                    </h3>`;
-            
-            salesDuplicates.forEach((group, groupIndex) => {
-                const original = group.original;
-                modalHTML += `
-                    <div style="background: #f0fdf4; border: 2px solid #86efac; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-                        <div style="font-weight: 600; color: #166534; margin-bottom: 0.5rem;">
-                            📦 ${original.product} | ${original.date} | R${parseFloat(original.total).toFixed(2)}
-                        </div>
-                        <div style="font-size: 0.875rem; color: #15803d; margin-bottom: 1rem;">
-                            Qty: ${original.quantity} × R${original.price} | Payment: ${original.payment}
-                        </div>
-                        <div style="background: white; border-radius: 6px; padding: 1rem;">
-                            <div style="font-weight: 600; margin-bottom: 0.5rem; color: #dc2626;">Select duplicates to DELETE:</div>`;
-                
-                group.duplicates.forEach((dup, dupIndex) => {
-                    modalHTML += `
-                        <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 4px; margin-bottom: 0.25rem;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='transparent'">
-                            <input type="checkbox" class="delete-checkbox" data-type="sale" data-index="${dup.index}" style="width: 18px; height: 18px; cursor: pointer;">
-                            <span style="flex: 1; font-size: 0.875rem;">
-                                Duplicate ${dupIndex + 1}: ${dup.date} | ${dup.product} | Qty: ${dup.quantity} | R${parseFloat(dup.total).toFixed(2)} | ${dup.payment}
-                                ${dup.customer_name ? ` | Customer: ${dup.customer_name}` : ''}
-                            </span>
-                        </label>`;
-                });
-                
-                modalHTML += `
-                        </div>
-                    </div>`;
-            });
-            
-            modalHTML += `</div>`;
-        }
-
-        // Expenses Duplicates Section
-        if (expensesDuplicates.length > 0) {
-            modalHTML += `
-                <div style="margin-bottom: 2rem;">
-                    <h3 style="color: #dc2626; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span>💸</span> Expenditure Duplicates (${expensesDuplicates.length} groups)
-                    </h3>`;
-            
-            expensesDuplicates.forEach((group, groupIndex) => {
-                const original = group.original;
-                modalHTML += `
-                    <div style="background: #fef2f2; border: 2px solid #fca5a5; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-                        <div style="font-weight: 600; color: #991b1b; margin-bottom: 0.5rem;">
-                            🏢 ${original.business_unit} - ${original.category} | ${original.date} | R${parseFloat(original.amount).toFixed(2)}
-                        </div>
-                        <div style="font-size: 0.875rem; color: #b91c1c; margin-bottom: 1rem;">
-                            Payment: ${original.payment_method} ${original.description ? `| ${original.description}` : ''}
-                        </div>
-                        <div style="background: white; border-radius: 6px; padding: 1rem;">
-                            <div style="font-weight: 600; margin-bottom: 0.5rem; color: #dc2626;">Select duplicates to DELETE:</div>`;
-                
-                group.duplicates.forEach((dup, dupIndex) => {
-                    modalHTML += `
-                        <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 4px; margin-bottom: 0.25rem;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='transparent'">
-                            <input type="checkbox" class="delete-checkbox" data-type="expense" data-index="${dup.index}" style="width: 18px; height: 18px; cursor: pointer;">
-                            <span style="flex: 1; font-size: 0.875rem;">
-                                Duplicate ${dupIndex + 1}: ${dup.date} | ${dup.business_unit} | ${dup.category} | R${parseFloat(dup.amount).toFixed(2)} | ${dup.payment_method}
-                                ${dup.description ? ` | ${dup.description}` : ''}
-                            </span>
-                        </label>`;
-                });
-                
-                modalHTML += `
-                        </div>
-                    </div>`;
-            });
-            
-            modalHTML += `</div>`;
-        }
-
-        modalHTML += `
-                </div>
-                
-                <div style="padding: 1rem 1.5rem; border-top: 2px solid #e5e7eb; display: flex; gap: 1rem; justify-content: space-between; align-items: center; background: #f9fafb;">
-                    <div style="color: #6b7280; font-size: 0.875rem;">
-                        <span id="selected-count">0</span> items selected for deletion
-                    </div>
-                    <div style="display: flex; gap: 1rem;">
-                        <button onclick="document.getElementById('duplicate-modal').remove()" style="padding: 0.75rem 1.5rem; border: 1px solid #d1d5db; background: white; color: #374151; border-radius: 6px; font-weight: 600; cursor: pointer;">
-                            Cancel
-                        </button>
-                        <button onclick="window.admin.deleteSelectedDuplicates()" style="padding: 0.75rem 1.5rem; border: none; background: #dc2626; color: white; border-radius: 6px; font-weight: 600; cursor: pointer;">
-                            🗑️ Delete Selected
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>`;
-
-        // Remove existing modal if any
-        const existingModal = document.getElementById('duplicate-modal');
-        if (existingModal) existingModal.remove();
-
-        // Add modal to page
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-        // Add event listeners for checkboxes
-        document.querySelectorAll('.delete-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', () => {
-                const count = document.querySelectorAll('.delete-checkbox:checked').length;
-                document.getElementById('selected-count').textContent = count;
-            });
-        });
-
-        // Store data for deletion
-        window.adminDuplicateData = { allSales, allExpenses };
-    }
-
-    // Delete selected duplicates
-    async deleteSelectedDuplicates() {
-        const checkboxes = document.querySelectorAll('.delete-checkbox:checked');
+        this.selectedReport = 'weekly-sales';
+        this.selectedPeriod = 'this-week';
+        this.emailRecipients = ['mangaliso.s@gmail.com'];
         
-        if (checkboxes.length === 0) {
-            ui.showAlert('Please select at least one item to delete.', 'warning');
-            return;
+        this.emailjsConfig = {
+            serviceID: 'inala.holdingz_butchery',
+            templateID: 'template_hioixfm',
+            publicKey: '8JZlr3oJZ3Q7BGEPI'
+        };
+
+        this.emailjsReady = false;
+        this.autoAlertEnabled = true;
+        this.creditThreshold = 5000;
+        this.lastCreditCheck = 0;
+        
+        window.emailAdminInstance = this;
+        this.init();
+    }
+
+    init() {
+        console.log('⚙️ Initializing Email Admin System...');
+        this.waitForEmailJS();
+        this.setupEventListeners();
+        this.loadAdminStats();
+        this.loadAutoAlertSettings();
+        console.log('✅ Email Admin System ready!');
+    }
+
+    waitForEmailJS() {
+        const checkEmailJS = () => {
+            if (typeof emailjs !== 'undefined') {
+                this.emailjsReady = true;
+                console.log('✅ EmailJS loaded and ready');
+            } else {
+                setTimeout(checkEmailJS, 500);
+            }
+        };
+        checkEmailJS();
+    }
+
+    setupEventListeners() {
+        // Test Email Button
+        const testBtn = document.getElementById('admin-email-test-btn');
+        if (testBtn) {
+            testBtn.replaceWith(testBtn.cloneNode(true));
+            const newTestBtn = document.getElementById('admin-email-test-btn');
+            newTestBtn.addEventListener('click', () => this.testEmail());
         }
 
-        if (!confirm(`⚠️ Are you sure you want to delete ${checkboxes.length} selected item(s)?\n\nThis action cannot be undone!`)) {
-            return;
-        }
+        // Report Selection
+        document.querySelectorAll('.report-option').forEach(opt => {
+            opt.addEventListener('click', (e) => {
+                document.querySelectorAll('.report-option').forEach(o => o.classList.remove('selected'));
+                e.currentTarget.classList.add('selected');
+                this.selectedReport = e.currentTarget.dataset.report;
+                this.updatePreview();
+            });
+        });
 
-        try {
-            const { allSales, allExpenses } = window.adminDuplicateData;
-            const salesToDelete = new Set();
-            const expensesToDelete = new Set();
+        // Period Selection
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('selected'));
+                e.currentTarget.classList.add('selected');
+                this.selectedPeriod = e.currentTarget.dataset.period;
+                this.updatePreview();
+            });
+        });
 
-            // Collect indices to delete
-            checkboxes.forEach(checkbox => {
-                const type = checkbox.getAttribute('data-type');
-                const index = parseInt(checkbox.getAttribute('data-index'));
-                
-                if (type === 'sale') {
-                    salesToDelete.add(index);
-                } else {
-                    expensesToDelete.add(index);
+        // Remove recipient
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-recipient')) {
+                const item = e.target.closest('.recipient-item');
+                const email = item.querySelector('span').textContent;
+                this.emailRecipients = this.emailRecipients.filter(r => r !== email);
+                item.remove();
+                this.updateAutoAlertRecipients();
+                this.showNotification('Email recipient removed', 'success');
+            }
+        });
+
+        // Add recipient on Enter
+        const emailInput = document.getElementById('new-email');
+        if (emailInput) {
+            emailInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.addEmailRecipient();
                 }
             });
+        }
 
-            // Filter out deleted items
-            const newSales = allSales.filter((_, index) => !salesToDelete.has(index));
-            const newExpenses = allExpenses.filter((_, index) => !expensesToDelete.has(index));
+        // Auto alert checkbox
+        const autoAlertCheckbox = document.getElementById('auto-credit-alert');
+        if (autoAlertCheckbox) {
+            autoAlertCheckbox.addEventListener('change', (e) => {
+                this.autoAlertEnabled = e.target.checked;
+                this.saveAutoAlertSettings();
+                this.showNotification(
+                    `Auto credit alerts ${this.autoAlertEnabled ? 'enabled' : 'disabled'}`,
+                    'success'
+                );
+            });
+        }
 
-            // Save to storage
-            if (salesToDelete.size > 0) {
-                await storage.saveToFirebase('sales', newSales);
-            }
-            if (expensesToDelete.size > 0) {
-                await storage.saveToFirebase('expenditures', newExpenses);
-            }
+        console.log('✅ Event listeners connected');
+    }
 
-            // Close modal
-            document.getElementById('duplicate-modal').remove();
+    async testEmail() {
+        if (!navigator.onLine) {
+            this.showNotification('❌ No internet connection', 'error');
+            return;
+        }
 
-            // Show success message
-            ui.showAlert(
-                `✅ Successfully deleted ${checkboxes.length} duplicate item(s)!\n\n` +
-                `Sales deleted: ${salesToDelete.size}\n` +
-                `Expenses deleted: ${expensesToDelete.size}`,
-                'success'
+        if (!this.emailjsReady) {
+            this.showNotification('⚠️ EmailJS not ready yet, please wait...', 'warning');
+            return;
+        }
+
+        this.showNotification('🧪 Sending test email...', 'info');
+
+        try {
+            const params = {
+                to_email: 'mangaliso.s@gmail.com',
+                to_name: 'Mangaliso',
+                from_name: 'INALA HOLDINGS',
+                from_email: 'inala.holdingz@gmail.com',
+                subject: '🧪 INALA HOLDINGS - Email Test',
+                message: 'This is a test email from your business system. EmailJS is working correctly!',
+                business_name: 'INALA HOLDINGS',
+                report_type: 'System Test',
+                period: 'Test Period',
+                report_date: new Date().toLocaleDateString(),
+                total_sales: 'R0.00',
+                total_expenses: 'R0.00',
+                net_profit: 'R0.00',
+                transaction_count: '0',
+                credit_sales_count: '0',
+                outstanding_amount: 'R0.00'
+            };
+
+            await emailjs.send(
+                this.emailjsConfig.serviceID,
+                this.emailjsConfig.templateID,
+                params
             );
 
-            // Reload data
-            await storage.loadAllData();
-            this.updateStats();
+            this.showNotification('✅ Test email sent successfully!', 'success');
 
         } catch (error) {
-            console.error('Error deleting duplicates:', error);
-            ui.showAlert('Error deleting duplicates: ' + error.message, 'error');
+            console.error('Test email failed:', error);
+            let errorMsg = 'Failed to send test email';
+            
+            if (error.text) {
+                if (error.text.includes('offline')) {
+                    errorMsg = 'No internet connection';
+                } else if (error.text.includes('Template')) {
+                    errorMsg = 'Email template configuration error';
+                } else {
+                    errorMsg = error.text;
+                }
+            }
+            
+            this.showNotification(`❌ ${errorMsg}`, 'error');
         }
+    }
+
+    addEmailRecipient() {
+        const input = document.getElementById('new-email');
+        if (!input) return;
+
+        const email = input.value.trim();
+        
+        if (!email) {
+            this.showNotification('Please enter an email address', 'error');
+            return;
+        }
+
+        if (!this.isValidEmail(email)) {
+            this.showNotification('Please enter a valid email address', 'error');
+            return;
+        }
+
+        if (this.emailRecipients.includes(email)) {
+            this.showNotification('Email already added', 'warning');
+            return;
+        }
+
+        this.emailRecipients.push(email);
+        
+        const container = document.getElementById('email-recipients');
+        if (container) {
+            const item = document.createElement('div');
+            item.className = 'recipient-item';
+            item.innerHTML = `
+                <span>${email}</span>
+                <div class="recipient-actions">
+                    <button class="remove-recipient" data-type="email">&times;</button>
+                </div>
+            `;
+            container.appendChild(item);
+        }
+
+        input.value = '';
+        this.updateAutoAlertRecipients();
+        this.showNotification('Email recipient added', 'success');
+    }
+
+    isValidEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    async sendReport() {
+        if (this.emailRecipients.length === 0) {
+            this.showNotification('❌ No email recipients added', 'error');
+            return;
+        }
+
+        if (!this.emailjsReady) {
+            this.showNotification('⚠️ EmailJS not ready yet', 'warning');
+            return;
+        }
+
+        this.showNotification(`📤 Sending report to ${this.emailRecipients.length} recipient(s)...`, 'info');
+
+        try {
+            const reportData = this.getReportData();
+            let successCount = 0;
+
+            for (const email of this.emailRecipients) {
+                try {
+                    const params = {
+                        to_email: email,
+                        to_name: email.split('@')[0],
+                        from_name: 'INALA HOLDINGS',
+                        from_email: 'inala.holdingz@gmail.com',
+                        subject: `INALA HOLDINGS - ${reportData.title}`,
+                        message: reportData.message,
+                        business_name: 'INALA HOLDINGS',
+                        report_type: reportData.title,
+                        period: reportData.period,
+                        report_date: new Date().toLocaleDateString(),
+                        total_sales: reportData.stats[0]?.value || 'R0.00',
+                        total_expenses: reportData.stats[1]?.value || 'R0.00',
+                        net_profit: reportData.stats[2]?.value || 'R0.00',
+                        transaction_count: reportData.stats[3]?.value || '0',
+                        credit_sales_count: '0',
+                        outstanding_amount: 'R0.00'
+                    };
+
+                    await emailjs.send(
+                        this.emailjsConfig.serviceID,
+                        this.emailjsConfig.templateID,
+                        params
+                    );
+
+                    successCount++;
+                    console.log(`✅ Sent to ${email}`);
+
+                } catch (error) {
+                    console.error(`Failed to send to ${email}:`, error);
+                }
+            }
+
+            if (successCount === this.emailRecipients.length) {
+                this.showNotification(`✅ Report sent to all ${successCount} recipients!`, 'success');
+            } else if (successCount > 0) {
+                this.showNotification(`⚠️ Report sent to ${successCount} of ${this.emailRecipients.length} recipients`, 'warning');
+            } else {
+                this.showNotification('❌ Failed to send report', 'error');
+            }
+
+        } catch (error) {
+            console.error('Send report error:', error);
+            this.showNotification('❌ Failed to send report', 'error');
+        }
+    }
+
+    async checkCreditThreshold(totalOutstanding) {
+        if (!this.autoAlertEnabled) return;
+        if (totalOutstanding < this.creditThreshold) return;
+        if (totalOutstanding === this.lastCreditCheck) return;
+
+        console.log(`🔔 Credit threshold exceeded: R${totalOutstanding}`);
+        this.lastCreditCheck = totalOutstanding;
+
+        await this.sendCreditAlert(totalOutstanding);
+    }
+
+    async sendCreditAlert(amount) {
+        if (!this.emailjsReady || this.emailRecipients.length === 0) return;
+
+        console.log('🚨 Sending credit alert emails...');
+
+        try {
+            for (const email of this.emailRecipients) {
+                const params = {
+                    to_email: email,
+                    to_name: email.split('@')[0],
+                    from_name: 'INALA HOLDINGS',
+                    from_email: 'inala.holdingz@gmail.com',
+                    subject: '🚨 INALA HOLDINGS - Credit Alert',
+                    message: `ALERT: Total outstanding credit has exceeded R${this.creditThreshold.toFixed(2)}`,
+                    business_name: 'INALA HOLDINGS',
+                    report_type: 'Credit Alert',
+                    period: 'Current',
+                    report_date: new Date().toLocaleDateString(),
+                    total_sales: 'N/A',
+                    total_expenses: 'N/A',
+                    net_profit: 'N/A',
+                    transaction_count: 'N/A',
+                    credit_sales_count: 'N/A',
+                    outstanding_amount: `R${amount.toFixed(2)}`
+                };
+
+                await emailjs.send(
+                    this.emailjsConfig.serviceID,
+                    this.emailjsConfig.templateID,
+                    params
+                );
+
+                console.log(`✅ Credit alert sent to ${email}`);
+            }
+
+            this.showNotification('🚨 Credit alert emails sent!', 'warning');
+
+        } catch (error) {
+            console.error('Credit alert failed:', error);
+        }
+    }
+
+    getReportData() {
+        const reports = {
+            'weekly-sales': {
+                title: 'Weekly Sales Report',
+                period: this.getPeriodText(),
+                message: 'Your weekly sales performance report with detailed breakdown.',
+                stats: [
+                    { value: 'R15,230', label: 'Total Sales', detail: '+12% from last week', trend: 'positive' },
+                    { value: 'R8,450', label: 'Expenses', detail: 'Within budget', trend: '' },
+                    { value: 'R6,780', label: 'Net Profit', detail: '45% margin', trend: 'positive' },
+                    { value: '23', label: 'Transactions', detail: '5 credit sales', trend: '' }
+                ]
+            },
+            'monthly-expenses': {
+                title: 'Monthly Expenses Report',
+                period: this.getPeriodText(),
+                message: 'Your monthly expense breakdown and analysis.',
+                stats: [
+                    { value: 'R49,279', label: 'Total Expenses', detail: '119.2% of revenue', trend: 'negative' },
+                    { value: 'R8,200', label: 'Butchery', detail: '16.6% of total', trend: '' },
+                    { value: 'R5,100', label: 'Perfumes', detail: '10.3% of total', trend: '' },
+                    { value: 'R35,979', label: 'Consumables', detail: '73.1% of total', trend: '' }
+                ]
+            },
+            'credit-status': {
+                title: 'Credit Status Report',
+                period: this.getPeriodText(),
+                message: 'Current credit and outstanding payments overview.',
+                stats: [
+                    { value: 'R40,990', label: 'Credit Sales', detail: '95 pending sales', trend: '' },
+                    { value: '15', label: 'Active Debtors', detail: '3 overdue', trend: 'negative' },
+                    { value: 'R12,450', label: 'Total Owed', detail: 'R8,210 collectible', trend: '' },
+                    { value: '76', label: 'Payments', detail: 'This period', trend: '' }
+                ]
+            },
+            'profit-loss': {
+                title: 'Profit & Loss Statement',
+                period: this.getPeriodText(),
+                message: 'Complete financial statement and performance analysis.',
+                stats: [
+                    { value: 'R41,340', label: 'Total Revenue', detail: 'All income sources', trend: '' },
+                    { value: 'R49,279', label: 'Total Expenses', detail: '119.2% of revenue', trend: 'negative' },
+                    { value: '-R7,939', label: 'Net Loss', detail: '-19.2% margin', trend: 'negative' },
+                    { value: '52', label: 'Customers', detail: 'This period', trend: '' }
+                ]
+            }
+        };
+
+        return reports[this.selectedReport] || reports['weekly-sales'];
+    }
+
+    getPeriodText() {
+        const periods = {
+            'this-week': 'This Week',
+            'last-week': 'Last Week',
+            'this-month': 'This Month',
+            'last-month': 'Last Month'
+        };
+        return periods[this.selectedPeriod] || 'Current Period';
+    }
+
+    updatePreview() {
+        const preview = document.querySelector('.preview-content');
+        if (!preview) return;
+
+        const data = this.getReportData();
+        
+        preview.innerHTML = `
+            <strong>${data.title}</strong><br>
+            Period: ${data.period}<br><br>
+            
+            <div class="quick-stats">
+                ${data.stats.map(stat => `
+                    <div class="quick-stat">
+                        <div class="stat-figure ${stat.trend}">${stat.value}</div>
+                        <div class="stat-label">${stat.label}</div>
+                        <div class="stat-detail">${stat.detail}</div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <br>
+            <em>Full report with detailed breakdown will be included.</em>
+        `;
+    }
+
+    loadAdminStats() {
+        const stats = {
+            totalSales: 96,
+            totalExpenses: 19,
+            totalPayments: 76,
+            totalCustomers: 3
+        };
+
+        const elements = {
+            'admin-total-sales': stats.totalSales,
+            'admin-total-expenses': stats.totalExpenses,
+            'admin-total-payments': stats.totalPayments,
+            'admin-total-customers': stats.totalCustomers
+        };
+
+        Object.entries(elements).forEach(([id, value]) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        });
+    }
+
+    loadAutoAlertSettings() {
+        const saved = localStorage.getItem('autoAlertSettings');
+        if (saved) {
+            const settings = JSON.parse(saved);
+            this.autoAlertEnabled = settings.enabled;
+            this.creditThreshold = settings.threshold || 5000;
+            
+            const checkbox = document.getElementById('auto-credit-alert');
+            if (checkbox) checkbox.checked = this.autoAlertEnabled;
+        }
+    }
+
+    saveAutoAlertSettings() {
+        const settings = {
+            enabled: this.autoAlertEnabled,
+            threshold: this.creditThreshold
+        };
+        localStorage.setItem('autoAlertSettings', JSON.stringify(settings));
+    }
+
+    updateAutoAlertRecipients() {
+        const recipientsEl = document.getElementById('auto-alert-recipients');
+        if (recipientsEl) {
+            recipientsEl.textContent = this.emailRecipients.join(', ');
+        }
+    }
+
+    showNotification(message, type = 'info') {
+        document.querySelectorAll('.admin-notification').forEach(n => n.remove());
+
+        const notification = document.createElement('div');
+        notification.className = `admin-notification ${type}`;
+        notification.innerHTML = `
+            <span>${message}</span>
+            <button onclick="this.parentNode.remove()">&times;</button>
+        `;
+
+        if (!document.querySelector('#admin-notification-styles')) {
+            const styles = document.createElement('style');
+            styles.id = 'admin-notification-styles';
+            styles.textContent = `
+                .admin-notification {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 16px 20px;
+                    border-radius: 8px;
+                    color: white;
+                    z-index: 10000;
+                    max-width: 400px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                    animation: slideIn 0.3s ease;
+                    font-size: 14px;
+                    font-weight: 500;
+                }
+                .admin-notification.success { background: linear-gradient(135deg, #10b981, #059669); }
+                .admin-notification.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+                .admin-notification.warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+                .admin-notification.info { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+                .admin-notification button {
+                    background: rgba(255,255,255,0.2);
+                    border: none;
+                    color: white;
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    font-size: 18px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s;
+                }
+                .admin-notification button:hover {
+                    background: rgba(255,255,255,0.3);
+                }
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(styles);
+        }
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.animation = 'slideIn 0.3s ease reverse';
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
     }
 }
 
-// Create and export singleton instance
-export const admin = new AdminManager();
+// Initialize
+const emailAdmin = new EmailAdminSystem();
+window.emailAdmin = emailAdmin;
 
-// Expose to window for onclick handlers
-window.admin = admin;
+// Global functions for HTML onclick
+window.addEmailRecipient = () => emailAdmin.addEmailRecipient();
+window.sendReport = () => emailAdmin.sendReport();
+
+// Monitor credit levels (call this from your creditors system)
+window.monitorCreditLevels = (totalOutstanding) => {
+    emailAdmin.checkCreditThreshold(totalOutstanding);
+};
+
+export const adminPanel = emailAdmin;
+
+console.log('✅ Email Admin System loaded!');

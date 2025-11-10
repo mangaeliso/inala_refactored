@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email System - Admin Panel</title>
+    <link rel="stylesheet" href="components.css">
+    <style>
+        /* Additional styles for this page */
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="page-header">
+            <h1 class="page-title">Communication System</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary">
+                    <i>📋</i> Sent Messages
+                </button>
+            </div>
+        </div>
+
+        <!-- Email System Container -->
+        <div class="email-system-container">
+            <!-- Header -->
+            <div class="email-header">
+                <div class="email-title">
+                    <i>📧</i> Send Reports & Messages
+                </div>
+                <div class="email-controls">
+                    <button class="btn btn-outline">
+                        <i>📊</i> Load Report Data
+                    </button>
+                    <button class="btn btn-outline">
+                        <i>👥</i> Customer List
+                    </button>
+                </div>
+            </div>
+
+            <!-- Period Selection -->
+            <div class="period-selector">
+                <button class="period-btn active" data-period="current-month">Current Month</button>
+                <button class="period-btn" data-period="last-month">Last Month</button>
+                <button class="period-btn" data-period="last-quarter">Last Quarter</button>
+                <button class="period-btn" data-period="custom">Custom Period</button>
+                
+                <div class="custom-period" id="customPeriod" style="display: none;">
+                    <input type="date" class="date-input" id="startDate">
+                    <span>to</span>
+                    <input type="date" class="date-input" id="endDate">
+                    <button class="btn btn-sm btn-primary">Apply</button>
+                </div>
+            </div>
+
+            <!-- Email Templates -->
+            <div class="email-templates">
+                <div class="template-card active" data-template="financial-report">
+                    <div class="template-icon">📊</div>
+                    <div class="template-title">Financial Report</div>
+                    <div class="template-description">
+                        Send comprehensive financial reports with revenue, expenses, and profit analysis.
+                    </div>
+                </div>
+                
+                <div class="template-card" data-template="credit-update">
+                    <div class="template-icon">💳</div>
+                    <div class="template-title">Credit Update</div>
+                    <div class="template-description">
+                        Send credit status updates and payment reminders to customers.
+                    </div>
+                </div>
+                
+                <div class="template-card" data-template="performance-alert">
+                    <div class="template-icon">⚠️</div>
+                    <div class="template-title">Performance Alert</div>
+                    <div class="template-description">
+                        Send alerts for critical business performance indicators.
+                    </div>
+                </div>
+                
+                <div class="template-card" data-template="custom">
+                    <div class="template-icon">✏️</div>
+                    <div class="template-title">Custom Message</div>
+                    <div class="template-description">
+                        Create and send completely customized messages and reports.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Email Composer -->
+            <div class="email-composer">
+                <div class="composer-header">
+                    <div class="composer-title">Compose Message</div>
+                    <div class="composer-actions">
+                        <button class="btn btn-sm btn-outline" id="loadTemplate">
+                            <i>🔄</i> Load Template
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="composer-body">
+                    <!-- Recipient Section -->
+                    <div class="recipient-section">
+                        <div class="recipient-type-selector">
+                            <button class="recipient-type-btn active" data-type="email">Email</button>
+                            <button class="recipient-type-btn" data-type="sms">SMS</button>
+                            <button class="recipient-type-btn" data-type="whatsapp">WhatsApp</button>
+                            <button class="recipient-type-btn" data-type="all">All Channels</button>
+                        </div>
+                        
+                        <div class="recipient-inputs">
+                            <div class="form-group recipient-input">
+                                <label class="form-label">Recipients</label>
+                                <select class="form-select" id="recipientGroup">
+                                    <option value="all">All Customers</option>
+                                    <option value="credit">Customers with Credit</option>
+                                    <option value="overdue">Overdue Accounts</option>
+                                    <option value="custom">Custom Selection</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group recipient-input">
+                                <label class="form-label">Additional Emails</label>
+                                <input type="text" class="form-input" placeholder="Enter emails separated by commas">
+                            </div>
+                        </div>
+                        
+                        <div class="recipient-list" id="recipientList">
+                            <!-- Recipient tags will be added here -->
+                        </div>
+                    </div>
+
+                    <!-- Report Preview -->
+                    <div class="report-preview">
+                        <div class="preview-header">
+                            <div class="preview-title">Report Preview - November 2024</div>
+                            <button class="btn btn-sm btn-outline">
+                                <i>🔄</i> Refresh Data
+                            </button>
+                        </div>
+                        
+                        <div class="preview-stats">
+                            <div class="preview-stat negative">
+                                <div class="stat-value">R7939.00</div>
+                                <div class="stat-label">Net Profit</div>
+                                <div class="stat-detail">Loss | Margin: -19.2%</div>
+                            </div>
+                            
+                            <div class="preview-stat warning">
+                                <div class="stat-value">R41340.00</div>
+                                <div class="stat-label">Total Revenue</div>
+                                <div class="stat-detail">Performance: Review Needed</div>
+                            </div>
+                            
+                            <div class="preview-stat negative">
+                                <div class="stat-value">R49279.00</div>
+                                <div class="stat-label">Total Expenses</div>
+                                <div class="stat-detail">Expense Ratio: 119.2%</div>
+                            </div>
+                            
+                            <div class="preview-stat">
+                                <div class="stat-value">R40990.00</div>
+                                <div class="stat-label">Credit Sales</div>
+                                <div class="stat-detail">95 pending credit sale(s)</div>
+                            </div>
+                        </div>
+                        
+                        <div class="preview-details">
+                            <div class="stat-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; font-size: 0.875rem;">
+                                <div>TOTAL SALES RECORDS: <strong>96</strong></div>
+                                <div>TOTAL EXPENSE RECORDS: <strong>19</strong></div>
+                                <div>TOTAL PAYMENT RECORDS: <strong>76</strong></div>
+                                <div>TOTAL CUSTOMERS: <strong>52</strong></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Message Composition -->
+                    <div class="message-composer">
+                        <div class="form-group">
+                            <label class="form-label">Subject</label>
+                            <input type="text" class="form-input" value="Financial Report - November 2024" id="emailSubject">
+                        </div>
+                        
+                        <div class="message-toolbar">
+                            <button class="toolbar-btn" data-format="bold"><i>𝐁</i> Bold</button>
+                            <button class="toolbar-btn" data-format="italic"><i>𝐼</i> Italic</button>
+                            <button class="toolbar-btn" data-format="underline"><i>𝑈</i> Underline</button>
+                            <button class="toolbar-btn" data-format="bullet"><i>•</i> List</button>
+                            <button class="toolbar-btn" data-format="link"><i>🔗</i> Link</button>
+                            <button class="toolbar-btn" data-format="table"><i>⊞</i> Table</button>
+                        </div>
+                        
+                        <textarea class="message-editor" id="messageEditor" placeholder="Compose your message here...">
+Dear Team,
+
+Please find below the financial report for November 2024:
+
+📊 FINANCIAL SUMMARY:
+• Net Profit: R7939.00 (Loss | Margin: -19.2%)
+• Total Revenue: R41340.00
+• Total Expenses: R49279.00
+• Credit Sales: R40990.00
+
+Key Metrics:
+• 95 pending credit sales requiring attention
+• Expense ratio at 119.2% - needs optimization
+• 76 payment records processed
+
+Please review and take necessary actions.
+
+Best regards,
+Management
+                        </textarea>
+                    </div>
+
+                    <!-- Delivery Options -->
+                    <div class="delivery-options">
+                        <label class="form-label">Delivery Method</label>
+                        <div class="delivery-methods">
+                            <div class="delivery-method active" data-method="email">
+                                <div class="method-icon">📧</div>
+                                <div class="method-info">
+                                    <div class="method-name">Email</div>
+                                    <div class="method-description">Send via email with attachments</div>
+                                </div>
+                            </div>
+                            
+                            <div class="delivery-method" data-method="sms">
+                                <div class="method-icon">📱</div>
+                                <div class="method-info">
+                                    <div class="method-name">SMS</div>
+                                    <div class="method-description">Send as text message</div>
+                                </div>
+                            </div>
+                            
+                            <div class="delivery-method" data-method="whatsapp">
+                                <div class="method-icon">💚</div>
+                                <div class="method-info">
+                                    <div class="method-name">WhatsApp</div>
+                                    <div class="method-description">Send via WhatsApp Business</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- WhatsApp Options -->
+                        <div class="whatsapp-options" id="whatsappOptions" style="display: none;">
+                            <div class="form-group whatsapp-template-selector">
+                                <label class="form-label">WhatsApp Template</label>
+                                <select class="form-select">
+                                    <option value="financial_report">Financial Report Template</option>
+                                    <option value="payment_reminder">Payment Reminder</option>
+                                    <option value="custom">Custom Message</option>
+                                </select>
+                            </div>
+                            <div class="template-preview">
+                                💼 *Financial Report - November 2024*
+                                
+                                📊 *Key Metrics:*
+                                • Net Profit: R7939.00
+                                • Total Revenue: R41340.00
+                                • Credit Sales: R40990.00
+                                
+                                Please review the attached report for details.
+                            </div>
+                        </div>
+
+                        <!-- SMS Options -->
+                        <div class="sms-options" id="smsOptions" style="display: none;">
+                            <div class="form-group">
+                                <label class="form-label">SMS Message (160 characters max)</label>
+                                <textarea class="form-input" rows="3" maxlength="160" placeholder="Type your SMS message here...">
+Financial Report Nov: Profit R7939, Revenue R41340, Expenses R49279. 95 pending credits. Review needed.
+                                </textarea>
+                            </div>
+                            <div class="sms-counter">
+                                <span>Characters: <span id="charCount">120</span>/160</span>
+                                <span>Messages: <span id="messageCount">1</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Message -->
+                    <div class="email-status" id="emailStatus"></div>
+
+                    <!-- Action Buttons -->
+                    <div class="email-actions">
+                        <button class="btn btn-preview" id="previewBtn">
+                            <i>👁️</i> Preview
+                        </button>
+                        <button class="btn btn-save" id="saveDraftBtn">
+                            <i>💾</i> Save Draft
+                        </button>
+                        <button class="btn btn-schedule" id="scheduleBtn">
+                            <i>⏰</i> Schedule
+                        </button>
+                        <button class="btn btn-send" id="sendBtn">
+                            <i>🚀</i> Send Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Modal -->
+    <div class="schedule-modal" id="scheduleModal">
+        <div class="schedule-content">
+            <div class="modal-header">
+                <div class="modal-title">Schedule Message</div>
+                <button class="close-btn" id="closeSchedule">&times;</button>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Schedule Date & Time</label>
+                <input type="datetime-local" class="form-input" id="scheduleDateTime">
+            </div>
+            
+            <div class="schedule-options">
+                <div class="form-group schedule-option">
+                    <label class="form-label">Repeat</label>
+                    <select class="form-select">
+                        <option value="none">Never</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+                
+                <div class="form-group schedule-option">
+                    <label class="form-label">Time Zone</label>
+                    <select class="form-select">
+                        <option value="sast">SAST (South Africa Standard Time)</option>
+                        <option value="gmt">GMT</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="email-actions">
+                <button class="btn btn-secondary" id="cancelSchedule">Cancel</button>
+                <button class="btn btn-primary" id="confirmSchedule">Schedule</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="email-system.js"></script>
+</body>
+</html>
