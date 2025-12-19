@@ -6,11 +6,14 @@ class CreditorsManager {
         this.creditorsList = null;
         this.searchInput = null;
         this.filterSelect = null;
+        this.monthFilterSelect = null;
+        this.showAllDebtsCheckbox = null;
         this.isLoaded = false;
         this.currentCustomer = null;
         this.currentOutstanding = 0;
         this.selectedMonth = null;
         this.selectedYear = null;
+        this.showAllDebts = false; // New flag for showing all debts
         this.useBusinessCycle = true;
         this.handleSearch = this.handleSearch.bind(this);
     }
@@ -84,6 +87,9 @@ class CreditorsManager {
         this.searchInput = document.getElementById('creditor-search');
         this.filterSelect = document.getElementById('creditor-filter');
         
+        // Add month filter and show all debts checkbox
+        this.addMonthFilterControls();
+        
         const refreshBtn = document.getElementById('refresh-creditors-btn');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.loadCreditorsData());
@@ -102,6 +108,103 @@ class CreditorsManager {
         
         this.getCurrentPeriod();
         if (!this.isLoaded) this.loadCreditorsData();
+    }
+
+    addMonthFilterControls() {
+        // Find the search/filter container
+        const searchContainer = this.searchInput?.parentElement?.parentElement;
+        if (!searchContainer) return;
+
+        // Check if controls already exist
+        if (document.getElementById('month-filter-select')) return;
+
+        // Create month filter dropdown
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        
+        let monthOptionsHTML = '<option value="current">Current Period</option>';
+        monthOptionsHTML += '<option value="all">All Time</option>';
+        monthOptionsHTML += '<option disabled>──────────</option>';
+        
+        // Add last 12 months + next 3 months
+        for (let i = -12; i <= 3; i++) {
+            const date = new Date(currentYear, currentMonth - 1 + i, 1);
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            const value = year + '-' + String(month).padStart(2, '0');
+            monthOptionsHTML += `<option value="${value}">${monthName}</option>`;
+        }
+
+        // Create the filter controls HTML
+        const filterControlsHTML = `
+            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem;">
+                        Filter by Period
+                    </label>
+                    <select id="month-filter-select" style="width: 100%; padding: 0.625rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; background: white;">
+                        ${monthOptionsHTML}
+                    </select>
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem;">
+                        &nbsp;
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.625rem; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer;">
+                        <input type="checkbox" id="show-all-debts-checkbox" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-size: 0.875rem; color: #374151;">Show All Outstanding Debts</span>
+                    </label>
+                </div>
+            </div>
+        `;
+
+        // Insert before the search input
+        searchContainer.insertAdjacentHTML('afterbegin', filterControlsHTML);
+
+        // Add event listeners
+        this.monthFilterSelect = document.getElementById('month-filter-select');
+        this.showAllDebtsCheckbox = document.getElementById('show-all-debts-checkbox');
+
+        if (this.monthFilterSelect) {
+            this.monthFilterSelect.addEventListener('change', (e) => {
+                const value = e.target.value;
+                
+                if (value === 'current') {
+                    this.getCurrentPeriod();
+                    this.showAllDebts = false;
+                    if (this.showAllDebtsCheckbox) this.showAllDebtsCheckbox.checked = false;
+                } else if (value === 'all') {
+                    this.selectedMonth = null;
+                    this.selectedYear = null;
+                    this.showAllDebts = false;
+                    if (this.showAllDebtsCheckbox) this.showAllDebtsCheckbox.checked = false;
+                } else {
+                    const [year, month] = value.split('-').map(Number);
+                    this.selectedYear = year;
+                    this.selectedMonth = month;
+                    this.showAllDebts = false;
+                    if (this.showAllDebtsCheckbox) this.showAllDebtsCheckbox.checked = false;
+                }
+                
+                this.loadCreditorsData();
+            });
+        }
+
+        if (this.showAllDebtsCheckbox) {
+            this.showAllDebtsCheckbox.addEventListener('change', (e) => {
+                this.showAllDebts = e.target.checked;
+                
+                if (this.showAllDebts) {
+                    // When showing all debts, we'll aggregate across all periods
+                    this.loadCreditorsData();
+                } else {
+                    // Revert to current filter
+                    this.loadCreditorsData();
+                }
+            });
+        }
     }
 
     handleSearch() {
@@ -155,7 +258,12 @@ class CreditorsManager {
     }
 
     filterByPeriod(items, type = 'sale') {
-        if (!this.selectedMonth || !this.selectedYear || !items) return items || [];
+        if (!items) return [];
+        
+        // If showing all debts or no period filter, return all items
+        if (this.showAllDebts || (!this.selectedMonth && !this.selectedYear)) {
+            return items;
+        }
 
         return items.filter(item => {
             if (!item || !item.date) return false;
@@ -186,7 +294,12 @@ class CreditorsManager {
     }
 
     getPeriodDisplayName() {
-        if (!this.selectedMonth || !this.selectedYear) return 'Current Period';
+        if (this.showAllDebts) {
+            return 'All Outstanding Debts';
+        }
+        if (!this.selectedMonth || !this.selectedYear) {
+            return 'All Time';
+        }
         return new Date(this.selectedYear, this.selectedMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     }
 
@@ -203,16 +316,22 @@ class CreditorsManager {
 
             const allCreditSales = allSales.filter(sale => sale.payment_type === 'credit' || sale.payment === 'credit');
             
-            // Filter sales for current month only
-            const monthlyCreditSales = this.filterByPeriod(allCreditSales, 'sale');
+            let monthlyCreditSales, monthlyPayments;
             
-            // Filter payments for current month only
-            const monthlyPayments = this.filterByPeriod(allPayments, 'payment');
+            if (this.showAllDebts) {
+                // When showing all debts, use ALL credit sales and payments
+                monthlyCreditSales = allCreditSales;
+                monthlyPayments = allPayments;
+            } else {
+                // Filter by period as normal
+                monthlyCreditSales = this.filterByPeriod(allCreditSales, 'sale');
+                monthlyPayments = this.filterByPeriod(allPayments, 'payment');
+            }
 
             const creditSummary = {};
             const originalNames = {};
 
-            // Process credit sales for current month
+            // Process credit sales
             monthlyCreditSales.forEach(sale => {
                 const normKey = this.getNormalizedCustomerKey(sale);
                 const origName = sale.customer_name || sale.customer_id || 'Unknown Customer';
@@ -242,7 +361,7 @@ class CreditorsManager {
                 }
             });
 
-            // Process payments for current month only
+            // Process payments
             monthlyPayments.forEach(payment => {
                 const normKey = this.getNormalizedCustomerKey(payment);
                 const origName = payment.customer_name || payment.to_customer || payment.from_collector || 'Unknown Customer';
@@ -251,9 +370,6 @@ class CreditorsManager {
                 if (creditSummary[normKey]) {
                     creditSummary[normKey].totalPaid += parseFloat(payment.amount) || 0;
                     creditSummary[normKey].payments.push(payment);
-                } else {
-                    // Payment without sales in current period - could be from previous period
-                    console.log(`Payment found for ${origName} but no credit sales in current period`);
                 }
             });
 
@@ -584,186 +700,148 @@ class CreditorsManager {
         }, 100);
     }
 
-// Replace your savePayment method in creditors.js with this improved version
+    async savePayment() {
+        const amountEl = document.getElementById('payment-amount-input');
+        const methodEl = document.getElementById('payment-method-input');
+        const dateEl = document.getElementById('payment-date-input');
+        const receivedByEl = document.getElementById('payment-received-by-input');
+        const notesEl = document.getElementById('payment-notes-input');
+        const periodEl = document.getElementById('payment-period-input');
 
-async savePayment() {
-    const amountEl = document.getElementById('payment-amount-input');
-    const methodEl = document.getElementById('payment-method-input');
-    const dateEl = document.getElementById('payment-date-input');
-    const receivedByEl = document.getElementById('payment-received-by-input');
-    const notesEl = document.getElementById('payment-notes-input');
-    const periodEl = document.getElementById('payment-period-input');
-
-    // Validation
-    if (!amountEl || !methodEl || !dateEl || !receivedByEl || !periodEl) {
-        this.showNotification('Error: Payment form elements not found', 'error');
-        return;
-    }
-
-    if (!amountEl.value || !methodEl.value || !dateEl.value || !receivedByEl.value || !periodEl.value) {
-        this.showNotification('Please fill all required fields', 'warning');
-        return;
-    }
-
-    const paymentAmount = parseFloat(amountEl.value);
-    if (isNaN(paymentAmount) || paymentAmount <= 0) {
-        this.showNotification('Please enter a valid payment amount', 'error');
-        return;
-    }
-
-    if (paymentAmount > this.currentOutstanding) {
-        this.showNotification(
-            `Payment amount (R${paymentAmount.toFixed(2)}) cannot exceed outstanding balance (R${this.currentOutstanding.toFixed(2)})`, 
-            'warning'
-        );
-        return;
-    }
-
-    // Parse period
-    const [year, month] = periodEl.value.split('-').map(Number);
-    
-    // Create payment data
-    const paymentData = {
-        id: 'payment_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-        customer_name: this.currentCustomer,
-        to_customer: this.currentCustomer, // Add this for better compatibility
-        amount: paymentAmount,
-        date: dateEl.value,
-        applies_to_period: { month, year },
-        type: 'payment',
-        payment_method: methodEl.value,
-        received_by: receivedByEl.value.trim(),
-        notes: (notesEl.value || '').trim(),
-        created_at: new Date().toISOString(),
-        status: 'completed',
-        created_by: 'system'
-    };
-
-    // Disable save button to prevent double-clicks
-    const saveButton = document.getElementById('save-payment-btn');
-    if (saveButton) {
-        saveButton.disabled = true;
-        saveButton.textContent = '💾 Saving...';
-        saveButton.style.opacity = '0.6';
-    }
-
-    try {
-        console.log('💾 Saving payment:', paymentData);
-        
-        // Step 1: Save to Firebase first (if available)
-        let firebaseSuccess = false;
-        if (typeof storage.savePaymentToFirebase === 'function') {
-            try {
-                console.log('☁️ Attempting Firebase save...');
-                firebaseSuccess = await storage.savePaymentToFirebase(paymentData);
-                console.log('☁️ Firebase save result:', firebaseSuccess);
-            } catch (firebaseError) {
-                console.error('❌ Firebase save error:', firebaseError);
-            }
-        } else {
-            console.warn('⚠️ Firebase save function not available');
+        if (!amountEl || !methodEl || !dateEl || !receivedByEl || !periodEl) {
+            this.showNotification('Error: Payment form elements not found', 'error');
+            return;
         }
 
-        // Step 2: Save to localStorage as backup
-        let payments = [];
+        if (!amountEl.value || !methodEl.value || !dateEl.value || !receivedByEl.value || !periodEl.value) {
+            this.showNotification('Please fill all required fields', 'warning');
+            return;
+        }
+
+        const paymentAmount = parseFloat(amountEl.value);
+        if (isNaN(paymentAmount) || paymentAmount <= 0) {
+            this.showNotification('Please enter a valid payment amount', 'error');
+            return;
+        }
+
+        if (paymentAmount > this.currentOutstanding) {
+            this.showNotification(
+                `Payment amount (R${paymentAmount.toFixed(2)}) cannot exceed outstanding balance (R${this.currentOutstanding.toFixed(2)})`, 
+                'warning'
+            );
+            return;
+        }
+
+        const [year, month] = periodEl.value.split('-').map(Number);
+        
+        const paymentData = {
+            id: 'payment_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+            customer_name: this.currentCustomer,
+            to_customer: this.currentCustomer,
+            amount: paymentAmount,
+            date: dateEl.value,
+            applies_to_period: { month, year },
+            type: 'payment',
+            payment_method: methodEl.value,
+            received_by: receivedByEl.value.trim(),
+            notes: (notesEl.value || '').trim(),
+            created_at: new Date().toISOString(),
+            status: 'completed',
+            created_by: 'system'
+        };
+
+        const saveButton = document.getElementById('save-payment-btn');
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.textContent = '💾 Saving...';
+            saveButton.style.opacity = '0.6';
+        }
+
         try {
-            const paymentsData = localStorage.getItem('payments');
-            payments = paymentsData ? JSON.parse(paymentsData) : [];
-        } catch (parseError) {
-            console.error('❌ Error parsing payments:', parseError);
-            payments = [];
-        }
-        
-        payments.push(paymentData);
-        localStorage.setItem('payments', JSON.stringify(payments));
-        console.log('✅ Saved to localStorage');
-
-        // Step 3: Update storage module if available
-        if (typeof storage.savePayments === 'function') {
-            try {
-                await storage.savePayments(payments);
-                console.log('✅ Storage module updated');
-            } catch (storageError) {
-                console.error('❌ Storage module error:', storageError);
-            }
-        }
-
-        // Step 4: Clear cache to force reload
-        if (typeof storage.clearCache === 'function') {
-            storage.clearCache();
-            console.log('🗑️ Cache cleared');
-        }
-
-        // Step 5: Close modal
-        const modal = document.getElementById('payment-modal-custom');
-        if (modal) {
-            modal.remove();
-        }
-
-        // Step 6: Show success notification
-        let successMessage = `Payment of R${paymentAmount.toFixed(2)} recorded for ${this.currentCustomer}!`;
-        if (firebaseSuccess) {
-            successMessage += ' (Synced to Firebase ☁️)';
-            this.showNotification(successMessage, 'success');
-        } else {
-            successMessage += ' (Saved locally - will sync when online)';
-            this.showNotification(successMessage, 'warning');
-        }
-
-        // Step 7: Force reload the creditors data
-        this.isLoaded = false;
-        
-        // Wait a bit longer for Firebase to propagate
-        setTimeout(async () => {
-            console.log('🔄 Reloading creditors data...');
+            console.log('💾 Saving payment:', paymentData);
             
-            // Force reload from Firebase if available
-            if (typeof storage.loadAllData === 'function') {
+            let firebaseSuccess = false;
+            if (typeof storage.savePaymentToFirebase === 'function') {
                 try {
-                    await storage.loadAllData(true); // Pass true to force refresh
-                } catch (loadError) {
-                    console.error('❌ Error reloading data:', loadError);
+                    console.log('☁️ Attempting Firebase save...');
+                    firebaseSuccess = await storage.savePaymentToFirebase(paymentData);
+                    console.log('☁️ Firebase save result:', firebaseSuccess);
+                } catch (firebaseError) {
+                    console.error('❌ Firebase save error:', firebaseError);
+                }
+            } else {
+                console.warn('⚠️ Firebase save function not available');
+            }
+
+            let payments = [];
+            try {
+                const paymentsData = localStorage.getItem('payments');
+                payments = paymentsData ? JSON.parse(paymentsData) : [];
+            } catch (parseError) {
+                console.error('❌ Error parsing payments:', parseError);
+                payments = [];
+            }
+            
+            payments.push(paymentData);
+            localStorage.setItem('payments', JSON.stringify(payments));
+            console.log('✅ Saved to localStorage');
+
+            if (typeof storage.savePayments === 'function') {
+                try {
+                    await storage.savePayments(payments);
+                    console.log('✅ Storage module updated');
+                } catch (storageError) {
+                    console.error('❌ Storage module error:', storageError);
                 }
             }
-            
-            // Reload the display
-            await this.loadCreditorsData();
-            console.log('✅ Data reloaded');
-        }, firebaseSuccess ? 1000 : 500); // Wait longer for Firebase
-        
-    } catch (error) {
-        console.error('❌ Error saving payment:', error);
-        this.showNotification('Error saving payment: ' + error.message, 'error');
-        
-        // Re-enable save button on error
-        if (saveButton) {
-            saveButton.disabled = false;
-            saveButton.textContent = '💾 Save Payment';
-            saveButton.style.opacity = '1';
-        }
-    }
-}
 
-// ALSO ADD THIS METHOD to help debug Firebase connection
-async testFirebaseConnection() {
-    console.log('🔍 Testing Firebase connection...');
-    
-    if (typeof storage.savePaymentToFirebase === 'function') {
-        console.log('✅ Firebase save function exists');
-        
-        // Check if Firebase is initialized
-        if (storage.db || storage.firestore) {
-            console.log('✅ Firebase database reference exists');
-            return true;
-        } else {
-            console.warn('⚠️ Firebase database reference not found');
-            return false;
+            if (typeof storage.clearCache === 'function') {
+                storage.clearCache();
+                console.log('🗑️ Cache cleared');
+            }
+
+            const modal = document.getElementById('payment-modal-custom');
+            if (modal) {
+                modal.remove();
+            }
+
+            let successMessage = `Payment of R${paymentAmount.toFixed(2)} recorded for ${this.currentCustomer}!`;
+            if (firebaseSuccess) {
+                successMessage += ' (Synced to Firebase ☁️)';
+                this.showNotification(successMessage, 'success');
+            } else {
+                successMessage += ' (Saved locally - will sync when online)';
+                this.showNotification(successMessage, 'warning');
+            }
+
+            this.isLoaded = false;
+            
+            setTimeout(async () => {
+                console.log('🔄 Reloading creditors data...');
+                
+                if (typeof storage.loadAllData === 'function') {
+                    try {
+                        await storage.loadAllData(true);
+                    } catch (loadError) {
+                        console.error('❌ Error reloading data:', loadError);
+                    }
+                }
+                
+                await this.loadCreditorsData();
+                console.log('✅ Data reloaded');
+            }, firebaseSuccess ? 1000 : 500);
+            
+        } catch (error) {
+            console.error('❌ Error saving payment:', error);
+            this.showNotification('Error saving payment: ' + error.message, 'error');
+            
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.textContent = '💾 Save Payment';
+                saveButton.style.opacity = '1';
+            }
         }
-    } else {
-        console.warn('⚠️ Firebase save function not available');
-        return false;
     }
-}
 
     filterCreditors() {
         const searchTerm = (this.searchInput?.value || '').toLowerCase().trim();
