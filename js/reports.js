@@ -33,7 +33,7 @@ class ReportsManager {
       }, 100);
       
       window.reports = this;
-      console.log('✅ ReportsManager initialized');
+      console.log('✓ ReportsManager initialized');
     } catch (e) {
       console.error('initialize error', e);
     }
@@ -80,6 +80,10 @@ class ReportsManager {
       .collector-toggle:hover { background: #f3f4f6 !important; }
       .toggle-icon { transition: transform 0.3s; display: inline-block; }
       .toggle-icon.expanded { transform: rotate(90deg); }
+      .filter-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 16px; background: #f9fafb; border-radius: 8px; margin-bottom: 16px; }
+      .filter-select { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; background: white; font-size: 0.875rem; }
+      .filter-label { font-size: 0.875rem; font-weight: 600; color: #374151; }
+      .filter-status { font-size: 0.875rem; color: #6b7280; margin-left: auto; }
     `;
     const s = document.createElement('style');
     s.id = 'reports-manager-styles';
@@ -240,20 +244,37 @@ class ReportsManager {
   addMonthFilterUI() {
     try {
       const header = document.querySelector('.reports-header') || (this.reportsDisplay && this.reportsDisplay.parentElement);
-      if (!header || document.getElementById('month-filter')) return;
+      if (!header || document.getElementById('month-select')) return;
+      
+      const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      const currentYear = new Date().getFullYear();
+      const years = [currentYear - 1, currentYear, currentYear + 1];
+      
+      const monthOptions = months.map((month, index) => 
+        `<option value="${index + 1}">${month}</option>`
+      ).join('');
+      
+      const yearOptions = years.map(year => 
+        `<option value="${year}">${year}</option>`
+      ).join('');
       
       const wrapper = document.createElement('div');
       wrapper.innerHTML = `
         <div class="filter-section">
           <div class="filter-controls">
-            <label class="filter-label">Filter Period:</label>
-            <select id="month-filter" class="filter-select">
-              <option value="all">All Time</option>
-              <option value="current" selected>Current Month</option>
+            <label class="filter-label">Select Month:</label>
+            <select id="month-select" class="filter-select">
+              ${monthOptions}
+            </select>
+            <select id="year-select" class="filter-select">
+              ${yearOptions}
             </select>
             <label style="display:flex;gap:8px;align-items:center">
               <input id="business-cycle-toggle" type="checkbox" checked>
-              <span style="font-size:0.875rem;color:#374151">Use Business Cycle (5th-4th)</span>
+              <span style="font-size:0.875rem;color:#374151">Business Cycle (5th-4th)</span>
             </label>
             <div id="filter-status" class="filter-status"></div>
           </div>
@@ -262,24 +283,51 @@ class ReportsManager {
       
       header.insertBefore(wrapper.firstElementChild, header.firstChild);
       
-      const monthFilter = document.getElementById('month-filter');
+      const monthSelect = document.getElementById('month-select');
+      const yearSelect = document.getElementById('year-select');
       const toggle = document.getElementById('business-cycle-toggle');
       
-      monthFilter.addEventListener('change', (e) => {
-        if (e.target.value==='current') this.getCurrentMonthData();
-        else { this.selectedMonth = null; this.selectedYear = null; }
+      // Set to current month/year
+      const now = new Date();
+      let defaultMonth = now.getMonth() + 1;
+      let defaultYear = now.getFullYear();
+      
+      if (this.useBusinessCycle && now.getDate() < 5) {
+        defaultMonth -= 1;
+        if (defaultMonth === 0) { 
+          defaultMonth = 12; 
+          defaultYear -= 1; 
+        }
+      }
+      
+      monthSelect.value = defaultMonth;
+      yearSelect.value = defaultYear;
+      
+      // Update selected month/year when dropdowns change
+      monthSelect.addEventListener('change', (e) => {
+        this.selectedMonth = parseInt(e.target.value);
+        this.selectedYear = parseInt(yearSelect.value);
+        this.updateFilterStatus();
+        this.updateOverview();
+      });
+      
+      yearSelect.addEventListener('change', (e) => {
+        this.selectedYear = parseInt(e.target.value);
         this.updateFilterStatus();
         this.updateOverview();
       });
       
       toggle.addEventListener('change', (e) => {
         this.useBusinessCycle = !!e.target.checked;
-        this.getCurrentMonthData();
         this.updateFilterStatus();
         this.updateOverview();
       });
       
+      // Initialize with current month
+      this.selectedMonth = parseInt(monthSelect.value);
+      this.selectedYear = parseInt(yearSelect.value);
       this.updateFilterStatus();
+      
     } catch (e) {
       console.error('addMonthFilterUI', e);
     }
@@ -291,7 +339,18 @@ class ReportsManager {
     
     if (this.selectedMonth && this.selectedYear) {
       const monthName = new Date(this.selectedYear, this.selectedMonth-1).toLocaleDateString('en-US', {month:'long', year:'numeric'});
-      el.textContent = this.useBusinessCycle ? `Showing: ${monthName} (Business Cycle)` : `Showing: ${monthName} (Calendar Month)`;
+      
+      if (this.useBusinessCycle) {
+        // Calculate business cycle dates (5th to 4th)
+        const startDate = new Date(this.selectedYear, this.selectedMonth-1, 5);
+        const endDate = new Date(this.selectedYear, this.selectedMonth, 4);
+        const startStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const endStr = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        
+        el.textContent = `Showing: ${monthName} (Business Cycle: ${startStr} - ${endStr})`;
+      } else {
+        el.textContent = `Showing: ${monthName} (Calendar Month)`;
+      }
     } else {
       el.textContent = 'Showing: All Time';
     }
@@ -598,7 +657,7 @@ class ReportsManager {
           <div style="background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
             <div class="collector-toggle" onclick="document.getElementById('${cid}').classList.toggle('expanded');document.getElementById('${cid}i').classList.toggle('expanded');" style="display: flex; justify-content: space-between; padding-bottom: 16px; border-bottom: 2px solid #d1d5db;">
               <div style="display: flex; gap: 12px;">
-                <span id="${cid}i" class="toggle-icon" style="font-size: 1.5rem;">▶</span>
+                <span id="${cid}i" class="toggle-icon" style="font-size: 1.5rem;">▸</span>
                 <div>
                   <div style="font-size: 1.25rem; font-weight: 700;">👤 ${collector.name}</div>
                   <div style="font-size: 0.875rem; color: #6b7280;">${collector.paymentsCount} payments from ${customersList.length} customers</div>
@@ -634,7 +693,7 @@ class ReportsManager {
               html += `
                 <div style="background: #f9fafb; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
                   <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <div style="font-weight: 600; font-size: 0.875rem;">📆 ${pd.periodName}</div>
+                    <div style="font-weight: 600; font-size: 0.875rem;">📅 ${pd.periodName}</div>
                     <div style="font-weight: 700; color: #10b981;">${this.fmt(pd.totalPaid)}</div>
                   </div>
                   <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;"><div style="font-size: 0.75rem; font-weight: 600; color: #6b7280; margin-bottom: 4px;">💳 Payments</div>
